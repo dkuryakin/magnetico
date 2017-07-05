@@ -1,5 +1,5 @@
 from peewee import Proxy, Model, BlobField, TextField, IntegerField, Check, \
-    ForeignKeyField
+    ForeignKeyField, BigIntegerField
 from playhouse.shortcuts import model_to_dict
 
 database_proxy = Proxy()
@@ -31,7 +31,7 @@ class Torrent(BaseModel):
 
     info_hash = BlobField(unique=True)
     name = TextField()
-    total_size = IntegerField(constraints=[Check('total_size > 0')])
+    total_size = BigIntegerField(constraints=[Check('total_size > 0')])
     discovered_on = IntegerField(constraints=[Check('discovered_on > 0')])
 
 
@@ -41,5 +41,5 @@ class File(BaseModel):
 
     torrent = ForeignKeyField(
         Torrent, on_delete='CASCADE', on_update='RESTRICT')
-    size = IntegerField()
+    size = BigIntegerField
     path = TextField()
