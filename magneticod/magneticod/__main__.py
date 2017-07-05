@@ -37,6 +37,7 @@ async def metadata_queue_watcher(database: persistence.Database, metadata_queue:
     """
     while True:
         info_hash, metadata = await metadata_queue.get()
+        print(info_hash, metadata)
         succeeded = database.add_metadata(info_hash, metadata)
         if not succeeded:
             logging.info("Corrupt metadata for %s! Ignoring.", info_hash.hex())
@@ -103,10 +104,10 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         help="Limit metadata size to protect memory overflow. Provide in human friendly format eg. 1 M, 1 GB"
     )
 
-    default_database_dir = os.path.join(appdirs.user_data_dir("magneticod"), "database.sqlite3")
+    default_database = 'sqlite:///' + os.path.join(appdirs.user_data_dir("magneticod"), "database.sqlite3")
     parser.add_argument(
-        "--database-file", type=str, default=default_database_dir,
-        help="Path to database file (default: {})".format(humanfriendly.format_path(default_database_dir))
+        "--database", type=str, default=default_database,
+        help="Database url (default: {}). Extra possible formats: postgresql://user:pass@host:port/dbname".format(default_database)
     )
     parser.add_argument(
         '-d', '--debug',
@@ -134,7 +135,7 @@ def main() -> int:
 
     # noinspection PyBroadException
     try:
-        database = persistence.Database(arguments.database_file)
+        database = persistence.Database(arguments.database)
     except:
         logging.exception("could NOT connect to the database!")
         return 1

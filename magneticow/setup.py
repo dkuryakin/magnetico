@@ -25,7 +25,8 @@ setup(
     install_requires=[
         "appdirs >= 1.4.3",
         "flask >= 0.12.1",
-        "gevent >= 1.2.1"
+        "gevent >= 1.2.1",
+        "peewee"
     ],
 
     classifiers=[

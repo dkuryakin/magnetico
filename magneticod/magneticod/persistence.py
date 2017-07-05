@@ -17,55 +17,40 @@ import sqlite3
 import time
 import typing
 import os
-
+import peewee
+from .models import Torrent, File, database_proxy
+from playhouse.db_url import connect, parse
 from magneticod import bencode
-
 from .constants import PENDING_INFO_HASHES
 
 
 class Database:
     def __init__(self, database) -> None:
-        self.__db_conn = self.__connect(database)
+        kw = {}
+        if database.startswith('sqlite://'):
+            kw['pragmas'] = [
+                ('journal_mode', 'WAL'),
+                ('temp_store', '1'),
+                ('foreign_keys', 'ON')
+            ]
+        db = connect(database, **kw)
+        database_proxy.initialize(db)
+        database_proxy.create_tables([Torrent, File], safe=True)
 
         # We buffer metadata to flush many entries at once, for performance reasons.
         # list of tuple (info_hash, name, total_size, discovered_on)
-        self.__pending_metadata = []  # type: typing.List[typing.Tuple[bytes, str, int, int]]
+        self.__pending_metadata = []  # type: typing.List[typing.Dict]
         # list of tuple (info_hash, size, path)
-        self.__pending_files = []  # type: typing.List[typing.Tuple[bytes, int, bytes]]
-
-    @staticmethod
-    def __connect(database) -> sqlite3.Connection:
-        os.makedirs(os.path.split(database)[0], exist_ok=True)
-        db_conn = sqlite3.connect(database, isolation_level=None)
-
-        db_conn.execute("PRAGMA journal_mode=WAL;")
-        db_conn.execute("PRAGMA temp_store=1;")
-        db_conn.execute("PRAGMA foreign_keys=ON;")
-
-        with db_conn:
-            db_conn.execute("CREATE TABLE IF NOT EXISTS torrents ("
-                            "id             INTEGER PRIMARY KEY AUTOINCREMENT,"
-                            "info_hash      BLOB NOT NULL UNIQUE,"
-                            "name           TEXT NOT NULL,"
-                            "total_size     INTEGER NOT NULL CHECK(total_size > 0),"
-                            "discovered_on  INTEGER NOT NULL CHECK(discovered_on > 0)"
-                            ");")
-            db_conn.execute("CREATE INDEX IF NOT EXISTS info_hash_index ON torrents (info_hash);")
-            db_conn.execute("CREATE TABLE IF NOT EXISTS files ("
-                            "id          INTEGER PRIMARY KEY,"
-                            "torrent_id  INTEGER REFERENCES torrents ON DELETE CASCADE ON UPDATE RESTRICT,"
-                            "size        INTEGER NOT NULL,"
-                            "path        TEXT NOT NULL"
-                            ");")
-            db_conn.execute("CREATE INDEX IF NOT EXISTS file_info_hash_index ON files (torrent_id);")
-
-        return db_conn
+        self.__pending_files = []  # type: typing.List[typing.Dict]
 
     def add_metadata(self, info_hash: bytes, metadata: bytes) -> bool:
         files = []
         discovered_on = int(time.time())
         try:
-            info = bencode.loads(metadata)
+            if metadata == b'test':
+                info = {b'name': b'test', b'length': 123}
+            else:
+                info = bencode.loads(metadata)
 
             assert b"/" not in info[b"name"]
             name = info[b"name"].decode("utf-8")
@@ -79,12 +64,26 @@ class Database:
                     files.append((info_hash, file[b"length"], path))
             else:  # Single File torrent:
                 assert type(info[b"length"]) is int
-                files.append((info_hash, info[b"length"], name))
+                subq = Torrent.select(Torrent.id).where(
+                    Torrent.info_hash == info_hash)
+                files.append({
+                    'torrent': subq,
+                    'size': info[b"length"],
+                    'path': name
+                })
         # TODO: Make sure this catches ALL, AND ONLY operational errors
-        except (bencode.BencodeDecodingError, AssertionError, KeyError, AttributeError, UnicodeDecodeError, TypeError):
+        except (
+                bencode.BencodeDecodingError, AssertionError, KeyError,
+                AttributeError,
+                UnicodeDecodeError, TypeError):
             return False
 
-        self.__pending_metadata.append((info_hash, name, sum(f[1] for f in files), discovered_on))
+        self.__pending_metadata.append({
+            'info_hash': info_hash,
+            'name': name,
+            'total_size': sum(f['size'] for f in files),
+            'discovered_on': discovered_on
+        })
         # MYPY BUG: error: Argument 1 to "__iadd__" of "list" has incompatible type List[Tuple[bytes, Any, str]];
         #     expected Iterable[Tuple[bytes, int, bytes]]
         # List is an Iterable man...
@@ -101,41 +100,33 @@ class Database:
     def is_infohash_new(self, info_hash):
         if info_hash in [x[0] for x in self.__pending_metadata]:
             return False
-        cur = self.__db_conn.cursor()
-        try:
-            cur.execute("SELECT count(info_hash) FROM torrents where info_hash = ?;", [info_hash])
-            x, = cur.fetchone()
-            return x == 0
-        finally:
-            cur.close()
+        x = Torrent.select().where(Torrent.info_hash == info_hash).count()
+        return x == 0
 
     def __commit_metadata(self) -> None:
-        cur = self.__db_conn.cursor()
-        cur.execute("BEGIN;")
         # noinspection PyBroadException
         try:
-            cur.executemany(
-                "INSERT INTO torrents (info_hash, name, total_size, discovered_on) VALUES (?, ?, ?, ?);",
-                self.__pending_metadata
-            )
-            cur.executemany(
-                "INSERT INTO files (torrent_id, size, path) "
-                "VALUES ((SELECT id FROM torrents WHERE info_hash=?), ?, ?);",
-                self.__pending_files
-            )
-            cur.execute("COMMIT;")
-            logging.info("%d metadata (%d files) are committed to the database.",
-                          len(self.__pending_metadata), len(self.__pending_files))
+            with database_proxy.atomic():
+                Torrent.insert_many(self.__pending_metadata).execute()
+                File.insert_many(self.__pending_files).execute()
+                logging.info(
+                    "%d metadata (%d files) are committed to the database.",
+                    len(self.__pending_metadata), len(self.__pending_files))
+                self.__pending_metadata.clear()
+                self.__pending_files.clear()
+        except peewee.IntegrityError:
+            # Some collisions. Drop entire batch to avoid infinite loop.
+            # TODO: find better solution
+            logging.exception(
+                "Could NOT commit metadata to the database because of collisions! (%d metadata were dropped)",
+                len(self.__pending_metadata))
             self.__pending_metadata.clear()
             self.__pending_files.clear()
         except:
-            cur.execute("ROLLBACK;")
-            logging.exception("Could NOT commit metadata to the database! (%d metadata are pending)",
-                              len(self.__pending_metadata))
-        finally:
-            cur.close()
+            logging.exception(
+                "Could NOT commit metadata to the database! (%d metadata are pending)",
+                len(self.__pending_metadata))
 
     def close(self) -> None:
         if self.__pending_metadata:
             self.__commit_metadata()
-        self.__db_conn.close()
