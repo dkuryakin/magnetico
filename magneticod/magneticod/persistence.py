@@ -61,7 +61,13 @@ class Database:
                     # Refuse trailing slash in any of the path items
                     assert not any(b"/" in item for item in file[b"path"])
                     path = "/".join(i.decode("utf-8") for i in file[b"path"])
-                    files.append((info_hash, file[b"length"], path))
+                    subq = Torrent.select(Torrent.id).where(
+                        Torrent.info_hash == info_hash)
+                    files.append({
+                        'torrent': subq,
+                        'size': file[b"length"],
+                        'path': path
+                    })
             else:  # Single File torrent:
                 assert type(info[b"length"]) is int
                 subq = Torrent.select(Torrent.id).where(
@@ -76,6 +82,7 @@ class Database:
                 bencode.BencodeDecodingError, AssertionError, KeyError,
                 AttributeError,
                 UnicodeDecodeError, TypeError):
+            logging.exception('Not critical error.')
             return False
 
         self.__pending_metadata.append({
