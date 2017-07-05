@@ -95,7 +95,7 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
     )
 
     parser.add_argument(
-        "--node-addr", action="store", type=parse_ip_port, required=False, default="0.0.0.0:0",
+        "--node-addr", action="store", type=parse_ip_port, required=False, default=os.getenv('NODE_ADDR', "0.0.0.0:0"),
         help="the address of the (DHT) node magneticod will use"
     )
 
@@ -105,6 +105,7 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
     )
 
     default_database = 'sqlite:///' + os.path.join(appdirs.user_data_dir("magneticod"), "database.sqlite3")
+    default_database = os.getenv('DATABASE', default_database)
     parser.add_argument(
         "--database", type=str, default=default_database,
         help="Database url (default: {}). Extra possible formats: postgresql://user:pass@host:port/dbname".format(default_database)
