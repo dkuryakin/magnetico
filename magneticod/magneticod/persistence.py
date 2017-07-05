@@ -98,7 +98,7 @@ class Database:
         return True
 
     def is_infohash_new(self, info_hash):
-        if info_hash in [x[0] for x in self.__pending_metadata]:
+        if info_hash in [x['info_hash'] for x in self.__pending_metadata]:
             return False
         x = Torrent.select().where(Torrent.info_hash == info_hash).count()
         return x == 0
