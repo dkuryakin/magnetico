@@ -37,7 +37,7 @@ async def metadata_queue_watcher(database: persistence.Database, metadata_queue:
     """
     while True:
         info_hash, metadata = await metadata_queue.get()
-        print(info_hash, metadata)
+        # print(info_hash, metadata)
         succeeded = database.add_metadata(info_hash, metadata)
         if not succeeded:
             logging.info("Corrupt metadata for %s! Ignoring.", info_hash.hex())
