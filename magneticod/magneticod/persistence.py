@@ -133,6 +133,7 @@ class Database:
             logging.exception(
                 "Could NOT commit metadata to the database! (%d metadata are pending)",
                 len(self.__pending_metadata))
+            logging.info(str(self.__pending_metadata))
 
     def close(self) -> None:
         if self.__pending_metadata:
