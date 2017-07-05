@@ -12,7 +12,8 @@ def run_setup():
         "appdirs >= 1.4.3",
         "humanfriendly",
         "better_bencode >= 0.2.1",
-        "peewee"
+        "peewee",
+        "psycopg2"
     ]
 
     if sys.platform in ["linux", "darwin"]:
