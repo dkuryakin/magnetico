@@ -41,5 +41,5 @@ class File(BaseModel):
 
     torrent = ForeignKeyField(
         Torrent, on_delete='CASCADE', on_update='RESTRICT')
-    size = BigIntegerField
+    size = BigIntegerField()
     path = TextField()
