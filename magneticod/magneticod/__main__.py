@@ -99,19 +99,19 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
     )
 
     parser.add_argument(
-        "--node-addr", action="store", type=parse_ip_port, required=False, default=os.getenv('NODE_ADDR', "0.0.0.0:0"),
+        '-a', "--node-addr", action="store", type=parse_ip_port, required=False, default=os.getenv('NODE_ADDR', "0.0.0.0:0"),
         help="the address of the (DHT) node magneticod will use"
     )
 
     parser.add_argument(
-        "--max-metadata-size", type=parse_size, default=DEFAULT_MAX_METADATA_SIZE,
+        '-s', "--max-metadata-size", type=parse_size, default=DEFAULT_MAX_METADATA_SIZE,
         help="Limit metadata size to protect memory overflow. Provide in human friendly format eg. 1 M, 1 GB"
     )
 
     default_database = 'sqlite:///' + os.path.join(appdirs.user_data_dir("magneticod"), "database.sqlite3")
     default_database = os.getenv('DATABASE', default_database)
     parser.add_argument(
-        "--database", type=str, default=default_database,
+        '-D', "--database", type=str, default=default_database,
         help="Database url (default: {}). Extra possible formats: postgresql://user:pass@host:port/dbname".format(default_database)
     )
     parser.add_argument(
