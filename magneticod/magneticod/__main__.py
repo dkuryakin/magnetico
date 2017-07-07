@@ -50,6 +50,10 @@ def parse_ip_port(netloc: str) -> typing.Optional[typing.Tuple[str, int]]:
     except ValueError:
         pass
 
+    # If only port was specified
+    if netloc.isdigit():
+        return '0.0.0.0', int(netloc)
+
     # In case port supplied
     try:
         parsed = urllib.parse.urlparse("//{}".format(netloc))
