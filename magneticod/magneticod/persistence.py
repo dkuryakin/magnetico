@@ -120,16 +120,18 @@ class Database:
         return True
 
     def is_infohash_new(self, info_hash):
+        self._cnt['catched'] += 1
         if info_hash in [x['info_hash'] for x in self.__pending_metadata]:
+            self._cnt['known'] += 1
             return False
         x = Torrent.select().where(Torrent.info_hash == info_hash).count()
+        self._cnt['known'] += int(x > 0)
         return x == 0
 
     def __commit_metadata(self) -> None:
         # noinspection PyBroadException
         n = len(self.__pending_metadata)
         try:
-            self._cnt['catched'] += n
             with database_proxy.atomic():
                 Torrent.insert_many(self.__pending_metadata).execute()
                 File.insert_many(self.__pending_files).execute()
@@ -141,7 +143,6 @@ class Database:
                 self.__pending_files.clear()
             self._cnt['added'] += n
         except peewee.IntegrityError:
-            self._cnt['known'] += n
             # Some collisions. Drop entire batch to avoid infinite loop.
             # TODO: find better solution
             logging.exception(
