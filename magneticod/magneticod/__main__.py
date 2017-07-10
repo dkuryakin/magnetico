@@ -150,7 +150,7 @@ def main() -> int:
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
     metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q()))  # type: ignore
-    print_info_task = loop.create_task(database.print_info(node, delay=3600))  # type: ignore
+    print_info_task = loop.create_task(database.print_info(node, delay=30))  # type: ignore
 
     try:
         asyncio.get_event_loop().run_forever()
