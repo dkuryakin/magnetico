@@ -119,6 +119,10 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO,
         help="Print debugging information in addition to normal processing.",
     )
+    parser.add_argument(
+        '-n', '--max-neighbours', default=2000, type=int,
+        help="Set max neighbours count.",
+    )
     return parser.parse_args(args)
 
 
@@ -146,7 +150,7 @@ def main() -> int:
         return 1
 
     loop = asyncio.get_event_loop()
-    node = dht.SybilNode(database.is_infohash_new, arguments.max_metadata_size)
+    node = dht.SybilNode(database.is_infohash_new, arguments.max_metadata_size, arguments.max_neighbours)
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
     metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore

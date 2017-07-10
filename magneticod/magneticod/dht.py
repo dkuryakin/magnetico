@@ -32,7 +32,7 @@ Metadata = bytes
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours):
         self.__true_id = os.urandom(20)
 
         self._nodes = 0
@@ -41,7 +41,7 @@ class SybilNode(asyncio.DatagramProtocol):
         self.__token_secret = os.urandom(4)
         # Maximum number of neighbours (this is a THRESHOLD where, once reached, the search for new neighbours will
         # stop; but until then, the total number of neighbours might exceed the threshold).
-        self.__n_max_neighbours = 2000
+        self.__n_max_neighbours = max_neighbours
         self.__parent_futures = {}  # type: typing.Dict[InfoHash, asyncio.Future]
         self._is_infohash_new = is_infohash_new
         self.__max_metadata_size = max_metadata_size
