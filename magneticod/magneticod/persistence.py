@@ -58,7 +58,7 @@ class Database:
             self._cnt = Counter()
             await asyncio.sleep(delay)
 
-    def add_metadata(self, info_hash: bytes, metadata: bytes) -> bool:
+    def add_metadata(self, info_hash: bytes, metadata: bytes, node) -> bool:
         files = []
         discovered_on = int(time.time())
         try:
@@ -115,7 +115,7 @@ class Database:
 
         # Automatically check if the buffer is full, and commit to the SQLite database if so.
         if len(self.__pending_metadata) >= PENDING_INFO_HASHES:
-            self.__commit_metadata()
+            self.__commit_metadata(node)
 
         return True
 
@@ -128,7 +128,7 @@ class Database:
         self._cnt['known'] += int(x > 0)
         return x == 0
 
-    def __commit_metadata(self) -> None:
+    def __commit_metadata(self, node) -> None:
         # noinspection PyBroadException
         n = len(self.__pending_metadata)
         try:
@@ -136,8 +136,8 @@ class Database:
                 Torrent.insert_many(self.__pending_metadata).execute()
                 File.insert_many(self.__pending_files).execute()
                 logging.info(
-                    "%d metadata (%d files) are committed to the database. [cathed_hash:%d]",
-                    len(self.__pending_metadata), len(self.__pending_files), self._cnt['catched']
+                    "%d metadata (%d files) are committed to the database. [nodes:%d cathed_hash:%d]",
+                    len(self.__pending_metadata), len(self.__pending_files), len(node._routing_table), self._cnt['catched']
                 )
                 self.__pending_metadata.clear()
                 self.__pending_files.clear()
@@ -156,6 +156,6 @@ class Database:
                 "Could NOT commit metadata to the database! (%d metadata are pending)",
                 len(self.__pending_metadata), exc_info=False)
 
-    def close(self) -> None:
+    def close(self, node) -> None:
         if self.__pending_metadata:
-            self.__commit_metadata()
+            self.__commit_metadata(node)

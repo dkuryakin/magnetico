@@ -31,14 +31,14 @@ from . import dht
 from . import persistence
 
 
-async def metadata_queue_watcher(database: persistence.Database, metadata_queue: asyncio.Queue) -> None:
+async def metadata_queue_watcher(database: persistence.Database, metadata_queue: asyncio.Queue, node) -> None:
     """
      Watches for the metadata queue to commit any complete info hashes to the database.
     """
     while True:
         info_hash, metadata = await metadata_queue.get()
         # print(info_hash, metadata)
-        succeeded = database.add_metadata(info_hash, metadata)
+        succeeded = database.add_metadata(info_hash, metadata, node)
         if not succeeded:
             logging.info("Corrupt metadata for %s! Ignoring.", info_hash.hex())
 
@@ -149,7 +149,7 @@ def main() -> int:
     node = dht.SybilNode(database.is_infohash_new, arguments.max_metadata_size)
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
-    metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q()))  # type: ignore
+    metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore
     print_info_task = loop.create_task(database.print_info(node, delay=3600))  # type: ignore
 
     try:
@@ -160,7 +160,7 @@ def main() -> int:
         metadata_queue_watcher_task.cancel()
         print_info_task.cancel()
         loop.run_until_complete(node.shutdown())
-        database.close()
+        database.close(node)
 
     return 0
 
