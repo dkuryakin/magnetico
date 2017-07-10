@@ -35,6 +35,7 @@ class SybilNode(asyncio.DatagramProtocol):
     def __init__(self, is_infohash_new, max_metadata_size):
         self.__true_id = os.urandom(20)
 
+        self._nodes = 0
         self._routing_table = {}  # type: typing.Dict[NodeID, NodeAddress]
 
         self.__token_secret = os.urandom(4)
@@ -311,6 +312,7 @@ class SybilNode(asyncio.DatagramProtocol):
 
     def __make_neighbours(self) -> None:
         for node_id, addr in self._routing_table.items():
+            self._nodes += 1
             self.sendto(self.__build_FIND_NODE_query(node_id[:15] + self.__true_id[:5]), addr)
 
     @staticmethod

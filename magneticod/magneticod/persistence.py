@@ -49,12 +49,13 @@ class Database:
     async def print_info(self, node, delay=3600):
         while True:
             logging.info('STATS nodes:%d catched_hash:%d known_hash:%d added_hash:%d bd_errors:%d',
-                len(node._routing_table),
+                node._nodes,
                 self._cnt['catched'],
                 self._cnt['known'],
                 self._cnt['added'],
                 self._cnt['errors']
             )
+            node._nodes = 0
             self._cnt = Counter()
             await asyncio.sleep(delay)
 
@@ -137,7 +138,7 @@ class Database:
                 File.insert_many(self.__pending_files).execute()
                 logging.info(
                     "%d metadata (%d files) are committed to the database. [nodes:%d cathed_hash:%d]",
-                    len(self.__pending_metadata), len(self.__pending_files), len(node._routing_table), self._cnt['catched']
+                    len(self.__pending_metadata), len(self.__pending_files), node._nodes, self._cnt['catched']
                 )
                 self.__pending_metadata.clear()
                 self.__pending_files.clear()
