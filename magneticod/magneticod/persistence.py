@@ -127,8 +127,9 @@ class Database:
 
     def __commit_metadata(self) -> None:
         # noinspection PyBroadException
+        n = len(self.__pending_metadata)
         try:
-            self._cnt['catched'] += len(self.__pending_metadata)
+            self._cnt['catched'] += n
             with database_proxy.atomic():
                 Torrent.insert_many(self.__pending_metadata).execute()
                 File.insert_many(self.__pending_files).execute()
@@ -138,9 +139,9 @@ class Database:
                 )
                 self.__pending_metadata.clear()
                 self.__pending_files.clear()
-            self._cnt['added'] += len(self.__pending_metadata)
+            self._cnt['added'] += n
         except peewee.IntegrityError:
-            self._cnt['known'] += len(self.__pending_metadata)
+            self._cnt['known'] += n
             # Some collisions. Drop entire batch to avoid infinite loop.
             # TODO: find better solution
             logging.exception(
@@ -149,7 +150,7 @@ class Database:
             self.__pending_metadata.clear()
             self.__pending_files.clear()
         except:
-            self._cnt['errors'] += len(self.__pending_metadata)
+            self._cnt['errors'] += n
             logging.exception(
                 "Could NOT commit metadata to the database! (%d metadata are pending)",
                 len(self.__pending_metadata), exc_info=False)
