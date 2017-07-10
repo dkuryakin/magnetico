@@ -284,7 +284,7 @@ class SybilNode(asyncio.DatagramProtocol):
         except asyncio.CancelledError:
             pass
         except Exception:
-            logging.exception("child result is exception")
+            logging.exception("child result is exception", exc_info=False)
         if parent_task.child_count <= 0 and not parent_task.done():
             parent_task.set_result(None)
 
@@ -307,7 +307,7 @@ class SybilNode(asyncio.DatagramProtocol):
                     data = self.__build_FIND_NODE_query(self.__true_id)
                     self.sendto(data, sockaddr)
             except Exception:
-                logging.exception("An exception occurred during bootstrapping!")
+                logging.exception("An exception occurred during bootstrapping!", exc_info=False)
 
     def __make_neighbours(self) -> None:
         for node_id, addr in self._routing_table.items():

@@ -22,6 +22,8 @@ from .models import Torrent, File, database_proxy
 from playhouse.db_url import connect, parse
 from magneticod import bencode
 from .constants import PENDING_INFO_HASHES
+from collections import Counter
+import asyncio
 
 
 class Database:
@@ -42,6 +44,18 @@ class Database:
         self.__pending_metadata = []  # type: typing.List[typing.Dict]
         # list of tuple (info_hash, size, path)
         self.__pending_files = []  # type: typing.List[typing.Dict]
+
+    async def print_info(self, node, delay=3600):
+        while True:
+            logging.info('STATS nodes:{} catched_hash:{} known_hash:{} added_hash:{} bd_errors:{}'.format(
+                len(node._routing_table),
+                self._cnt['catched'],
+                self._cnt['known'],
+                self._cnt['added'],
+                self._cnt['errors']
+            ))
+            self._cnt = Counter()
+            await asyncio.sleep(delay)
 
     def add_metadata(self, info_hash: bytes, metadata: bytes) -> bool:
         files = []
@@ -82,7 +96,7 @@ class Database:
                 bencode.BencodeDecodingError, AssertionError, KeyError,
                 AttributeError,
                 UnicodeDecodeError, TypeError):
-            logging.exception('Not critical error.')
+            logging.exception('Not critical error.', exc_info=False)
             return False
 
         self.__pending_metadata.append({
@@ -113,26 +127,31 @@ class Database:
     def __commit_metadata(self) -> None:
         # noinspection PyBroadException
         try:
+            self._cnt['catched'] += len(self.__pending_metadata)
             with database_proxy.atomic():
                 Torrent.insert_many(self.__pending_metadata).execute()
                 File.insert_many(self.__pending_files).execute()
                 logging.info(
-                    "%d metadata (%d files) are committed to the database.",
-                    len(self.__pending_metadata), len(self.__pending_files))
+                    "%d metadata (%d files) are committed to the database. [cathed_hash:%d]",
+                    len(self.__pending_metadata), len(self.__pending_files), self._cnt['catched']
+                )
                 self.__pending_metadata.clear()
                 self.__pending_files.clear()
+            self._cnt['added'] += len(self.__pending_metadata)
         except peewee.IntegrityError:
+            self._cnt['known'] += len(self.__pending_metadata)
             # Some collisions. Drop entire batch to avoid infinite loop.
             # TODO: find better solution
             logging.exception(
                 "Could NOT commit metadata to the database because of collisions! (%d metadata were dropped)",
-                len(self.__pending_metadata))
+                len(self.__pending_metadata), exc_info=False)
             self.__pending_metadata.clear()
             self.__pending_files.clear()
         except:
+            self._cnt['errors'] += len(self.__pending_metadata)
             logging.exception(
                 "Could NOT commit metadata to the database! (%d metadata are pending)",
-                len(self.__pending_metadata))
+                len(self.__pending_metadata), exc_info=False)
             logging.info(str(self.__pending_metadata))
 
     def close(self) -> None:

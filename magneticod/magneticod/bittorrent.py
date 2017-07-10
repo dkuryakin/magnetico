@@ -160,7 +160,7 @@ class DisposablePeer:
         try:
             self.__metadata = bytearray(metadata_size)  # type: ignore
         except MemoryError:
-            logging.exception("Could not allocate %.1f KiB for the metadata!", metadata_size / 1024)
+            logging.exception("Could not allocate %.1f KiB for the metadata!", metadata_size / 1024, exc_info=False)
             raise
 
         self.__metadata_size = metadata_size

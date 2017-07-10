@@ -4,7 +4,7 @@ BOOTSTRAPPING_NODES = [
     ("router.bittorrent.com", 6881),
     ("dht.transmissionbt.com", 6881)
 ]
-PENDING_INFO_HASHES = 10  # threshold for pending info hashes before being committed to database:
+PENDING_INFO_HASHES = 1  # threshold for pending info hashes before being committed to database:
 
 TICK_INTERVAL = 1  # in seconds
 

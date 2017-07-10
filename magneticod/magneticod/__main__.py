@@ -99,7 +99,7 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
     )
 
     parser.add_argument(
-        '-a', "--node-addr", action="store", type=parse_ip_port, required=False, default=os.getenv('NODE_ADDR', "0.0.0.0:0"),
+        '-a', "--node-addr", action="store", type=parse_ip_port, required=False, default=os.getenv('NODE_ADDR', "0.0.0.0:1910"),
         help="the address of the (DHT) node magneticod will use"
     )
 
@@ -142,7 +142,7 @@ def main() -> int:
     try:
         database = persistence.Database(arguments.database)
     except:
-        logging.exception("could NOT connect to the database!")
+        logging.exception("could NOT connect to the database!", exc_info=False)
         return 1
 
     loop = asyncio.get_event_loop()
@@ -150,6 +150,7 @@ def main() -> int:
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
     metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q()))  # type: ignore
+    print_info_task = loop.create_task(database.print_info(node, delay=3600))  # type: ignore
 
     try:
         asyncio.get_event_loop().run_forever()
@@ -157,6 +158,7 @@ def main() -> int:
         logging.critical("Keyboard interrupt received! Exiting gracefully...")
     finally:
         metadata_queue_watcher_task.cancel()
+        print_info_task.cancel()
         loop.run_until_complete(node.shutdown())
         database.close()
 
