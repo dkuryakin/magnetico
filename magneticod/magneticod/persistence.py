@@ -29,6 +29,7 @@ import asyncio
 class Database:
     def __init__(self, database) -> None:
         kw = {}
+        self._cnt = Counter()
         if database.startswith('sqlite://'):
             kw['pragmas'] = [
                 ('journal_mode', 'WAL'),
@@ -47,13 +48,13 @@ class Database:
 
     async def print_info(self, node, delay=3600):
         while True:
-            logging.info('STATS nodes:{} catched_hash:{} known_hash:{} added_hash:{} bd_errors:{}'.format(
+            logging.info('STATS nodes:%d catched_hash:%d known_hash:%d added_hash:%d bd_errors:%d',
                 len(node._routing_table),
                 self._cnt['catched'],
                 self._cnt['known'],
                 self._cnt['added'],
                 self._cnt['errors']
-            ))
+            )
             self._cnt = Counter()
             await asyncio.sleep(delay)
 
@@ -152,7 +153,6 @@ class Database:
             logging.exception(
                 "Could NOT commit metadata to the database! (%d metadata are pending)",
                 len(self.__pending_metadata), exc_info=False)
-            logging.info(str(self.__pending_metadata))
 
     def close(self) -> None:
         if self.__pending_metadata:
