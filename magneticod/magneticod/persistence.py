@@ -49,13 +49,13 @@ class Database:
     async def print_info(self, node, delay=3600):
         while True:
             logging.info('STATS nodes:%d catched_hash:%d known_hash:%d added_hash:%d bd_errors:%d',
-                node._nodes,
+                node._cnt['nodes'],
                 self._cnt['catched'],
                 self._cnt['known'],
                 self._cnt['added'],
                 self._cnt['errors']
             )
-            node._nodes = 0
+            node._cnt = Counter()
             self._cnt = Counter()
             await asyncio.sleep(delay)
 
@@ -136,13 +136,14 @@ class Database:
             with database_proxy.atomic():
                 Torrent.insert_many(self.__pending_metadata).execute()
                 File.insert_many(self.__pending_files).execute()
+                self._cnt['added'] += n
                 logging.info(
-                    "%d metadata (%d files) are committed to the database. [nodes:%d cathed_hash:%d]",
-                    len(self.__pending_metadata), len(self.__pending_files), node._nodes, self._cnt['catched']
+                    "%d metadata (%d files) are committed to the database. [nodes:%d cathed_hash:%d rate:%.2f%% fetch_task:%d asyncio_task:%d]",
+                    len(self.__pending_metadata), len(self.__pending_files), node._cnt['nodes'], self._cnt['catched'],
+                    100 * self._cnt['added'] / self._cnt['catched'], node.metadata_tasks, len(asyncio.Task.all_tasks())
                 )
                 self.__pending_metadata.clear()
                 self.__pending_files.clear()
-            self._cnt['added'] += n
         except peewee.IntegrityError:
             # Some collisions. Drop entire batch to avoid infinite loop.
             # TODO: find better solution

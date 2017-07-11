@@ -19,7 +19,7 @@ import logging
 import socket
 import typing
 import os
-
+from collections import Counter
 from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH, PEER_TIMEOUT, TICK_INTERVAL
 from . import bencode
 from . import bittorrent
@@ -35,7 +35,7 @@ class SybilNode(asyncio.DatagramProtocol):
     def __init__(self, is_infohash_new, max_metadata_size, max_neighbours):
         self.__true_id = os.urandom(20)
 
-        self._nodes = 0
+        self._cnt = Counter()
         self._routing_table = {}  # type: typing.Dict[NodeID, NodeAddress]
 
         self.__token_secret = os.urandom(4)
@@ -108,6 +108,10 @@ class SybilNode(asyncio.DatagramProtocol):
             # The previous "exception" was kind of "unexceptional", but we should log anything else.
             logging.error("SybilNode operational error: `%s`", exc)
 
+    @property
+    def metadata_tasks(self):
+        return sum(x.child_count for x in self.__parent_futures.values())
+
     async def tick_periodically(self) -> None:
         while True:
             await asyncio.sleep(TICK_INTERVAL)
@@ -120,8 +124,7 @@ class SybilNode(asyncio.DatagramProtocol):
             if not self._is_writing_paused:
                 self.__n_max_neighbours = self.__n_max_neighbours * 101 // 100
             # mypy ignore: because .child_count on Future is monkey-patched
-            logging.debug("fetch metadata task count: %d", sum(
-                x.child_count for x in self.__parent_futures.values()))  # type: ignore
+            logging.debug("fetch metadata task count: %d", self.metadata_tasks)  # type: ignore
             logging.debug("asyncio task count: %d", len(asyncio.Task.all_tasks()))
 
     def datagram_received(self, data, addr) -> None:
@@ -312,7 +315,7 @@ class SybilNode(asyncio.DatagramProtocol):
 
     def __make_neighbours(self) -> None:
         for node_id, addr in self._routing_table.items():
-            self._nodes += 1
+            self._cnt['nodes'] += 1
             self.sendto(self.__build_FIND_NODE_query(node_id[:15] + self.__true_id[:5]), addr)
 
     @staticmethod
