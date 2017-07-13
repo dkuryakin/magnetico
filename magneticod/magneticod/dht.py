@@ -32,9 +32,12 @@ Metadata = bytes
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache):
         self.__true_id = os.urandom(20)
+        self._cache = cache
 
+        self._collisions = 0
+        self._hashes = set()
         self._cnt = Counter()
         self._routing_table = {}  # type: typing.Dict[NodeID, NodeAddress]
 
@@ -224,6 +227,12 @@ class SybilNode(asyncio.DatagramProtocol):
             peer_addr = (addr[0], addr[1])
         else:
             peer_addr = (addr[0], port)
+
+        if self._cache:
+            if info_hash in self._hashes:
+                self._collisions += 1
+                return
+            self._hashes.add(info_hash)
 
         if not self._is_infohash_new(info_hash):
             return
