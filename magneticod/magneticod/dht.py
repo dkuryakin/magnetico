@@ -23,6 +23,7 @@ from collections import Counter
 from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH, PEER_TIMEOUT, TICK_INTERVAL
 from . import bencode
 from . import bittorrent
+from pymemcache.client.base import Client
 
 NodeID = bytes
 NodeAddress = typing.Tuple[str, int]
@@ -32,9 +33,13 @@ Metadata = bytes
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache):
         self.__true_id = os.urandom(20)
         self._cache = cache
+        self._memcache = Client((
+            memcache.split(':')[0],
+            int(memcache.split(':')[1])
+        )) if memcache else None
 
         self._collisions = 0
         self._hashes = set()
@@ -231,8 +236,17 @@ class SybilNode(asyncio.DatagramProtocol):
         if self._cache:
             if info_hash in self._hashes:
                 self._collisions += 1
+                self._is_infohash_new(info_hash, skip_check=True)
                 return
             self._hashes.add(info_hash)
+
+        if self._memcache:
+            known = self._memcache.get(info_hash)
+            if known:
+                self._collisions += 1
+                self._is_infohash_new(info_hash, skip_check=True)
+                return
+            self._memcache.set(info_hash, '1')
 
         if not self._is_infohash_new(info_hash):
             return

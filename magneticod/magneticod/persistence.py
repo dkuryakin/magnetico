@@ -122,8 +122,10 @@ class Database:
 
         return True
 
-    def is_infohash_new(self, info_hash):
+    def is_infohash_new(self, info_hash, skip_check=False):
         self._cnt['catched'] += 1
+        if skip_check:
+            return
         if info_hash in [x['info_hash'] for x in self.__pending_metadata]:
             self._cnt['known'] += 1
             return False
@@ -155,6 +157,7 @@ class Database:
                 len(self.__pending_metadata), exc_info=False)
             self.__pending_metadata.clear()
             self.__pending_files.clear()
+            self._cnt['errors'] += n
         except:
             self._cnt['errors'] += n
             logging.exception(

@@ -13,7 +13,8 @@ def run_setup():
         "humanfriendly",
         "better_bencode >= 0.2.1",
         "peewee",
-        "psycopg2"
+        "psycopg2",
+        "pymemcache"
     ]
 
     if sys.platform in ["linux", "darwin"]:
