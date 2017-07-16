@@ -158,7 +158,7 @@ def main() -> int:
         return 1
 
     loop = asyncio.get_event_loop()
-    node = dht.SybilNode(database.is_infohash_new, arguments.max_metadata_size, arguments.max_neighbours, arguments.cache, arguments.memcache, arguments.node_addr.split(':')[-1].encode())
+    node = dht.SybilNode(database.is_infohash_new, arguments.max_metadata_size, arguments.max_neighbours, arguments.cache, arguments.memcache, str(arguments.node_addr[-1]).encode())
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
     metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore
