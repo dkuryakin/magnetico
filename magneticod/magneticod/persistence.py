@@ -36,15 +36,20 @@ class Database:
                 ('temp_store', '1'),
                 ('foreign_keys', 'ON')
             ]
-        db = connect(database, **kw)
-        database_proxy.initialize(db)
-        database_proxy.create_tables([Torrent, File], safe=True)
+        self._db = database
+        self._kw = kw
+        self._connect()
 
         # We buffer metadata to flush many entries at once, for performance reasons.
         # list of tuple (info_hash, name, total_size, discovered_on)
         self.__pending_metadata = []  # type: typing.List[typing.Dict]
         # list of tuple (info_hash, size, path)
         self.__pending_files = []  # type: typing.List[typing.Dict]
+
+    def _connect(self):
+        db = connect(self._db, **self._kw)
+        database_proxy.initialize(db)
+        database_proxy.create_tables([Torrent, File], safe=True)
 
     async def print_info(self, node, delay=3600):
         while True:
@@ -95,7 +100,8 @@ class Database:
                     'size': info[b"length"],
                     'path': name
                 })
-        # TODO: Make sure this catches ALL, AND ONLY operational errors
+        except peewee.OperationalError:
+
         except (
                 bencode.BencodeDecodingError, AssertionError, KeyError,
                 AttributeError,
