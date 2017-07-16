@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 import asyncio
+import base64
 import errno
 import zlib
 import logging
@@ -39,12 +40,13 @@ class SybilNode(asyncio.DatagramProtocol):
         self._memcache = Client((
             memcache.split(':')[0],
             int(memcache.split(':')[1])
-        )) if memcache else None
+        ), key_prefix=memcache.split(':')[1].encode()) if memcache else None
 
         self._collisions = 0
         self._hashes = set()
         self._cnt = Counter()
         self._routing_table = {}  # type: typing.Dict[NodeID, NodeAddress]
+        self._skip = 0
 
         self.__token_secret = os.urandom(4)
         # Maximum number of neighbours (this is a THRESHOLD where, once reached, the search for new neighbours will
@@ -167,8 +169,6 @@ class SybilNode(asyncio.DatagramProtocol):
     def __on_FIND_NODE_response(self, message: bencode.KRPCDict) -> None:  # pylint: disable=invalid-name
         # Well, we are not really interested in your response if our routing table is already full; sorry.
         # (Thanks to Glandos@GitHub for the heads up!)
-        if len(self._routing_table) >= self.__n_max_neighbours:
-            return
 
         try:
             nodes_arg = message[b"r"][b"nodes"]
@@ -181,8 +181,14 @@ class SybilNode(asyncio.DatagramProtocol):
         except AssertionError:
             return
 
+        if len(self._routing_table) >= self.__n_max_neighbours:
+            self._skip += len(nodes)
+            return
+
         nodes = [n for n in nodes if n[1][1] != 0]  # Ignore nodes with port 0.
-        self._routing_table.update(nodes[:self.__n_max_neighbours - len(self._routing_table)])
+        update_nodes = nodes[:self.__n_max_neighbours - len(self._routing_table)]
+        self._skip += len(nodes) - len(update_nodes)
+        self._routing_table.update(update_nodes)
 
     def __on_GET_PEERS_query(self, message: bencode.KRPCDict, addr: NodeAddress) -> None:  # pylint: disable=invalid-name
         try:
@@ -240,13 +246,14 @@ class SybilNode(asyncio.DatagramProtocol):
                 return
             self._hashes.add(info_hash)
 
+        m_info_hash = base64.b32encode(info_hash)
         if self._memcache:
-            known = self._memcache.get(info_hash)
+            known = self._memcache.get(m_info_hash)
             if known:
                 self._collisions += 1
                 self._is_infohash_new(info_hash, skip_check=True)
                 return
-            self._memcache.set(info_hash, '1')
+            self._memcache.set(m_info_hash, '1', expire=15*60)
 
         if not self._is_infohash_new(info_hash):
             return
