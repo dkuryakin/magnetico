@@ -34,13 +34,13 @@ Metadata = bytes
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache, prefix):
         self.__true_id = os.urandom(20)
         self._cache = cache
         self._memcache = Client((
             memcache.split(':')[0],
             int(memcache.split(':')[1])
-        ), key_prefix=memcache.split(':')[1].encode()) if memcache else None
+        ), key_prefix=prefix) if memcache else None
 
         self._collisions = 0
         self._hashes = set()
