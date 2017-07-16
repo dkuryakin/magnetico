@@ -100,7 +100,7 @@ class Database:
                     'size': info[b"length"],
                     'path': name
                 })
-        except peewee.OperationalError:
+        except peewee.InterfaceError:
             self._connect()
             return False
         except (
