@@ -101,7 +101,8 @@ class Database:
                     'path': name
                 })
         except peewee.OperationalError:
-
+            self._connect()
+            return False
         except (
                 bencode.BencodeDecodingError, AssertionError, KeyError,
                 AttributeError,
