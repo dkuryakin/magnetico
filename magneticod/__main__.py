@@ -132,7 +132,7 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         help="Set max neighbours count.",
     )
     parser.add_argument(
-        '-B', '--batch-size', default=10, type=int,
+        '-B', '--batch-size', default=1, type=int,
         help="Commit batch size.",
     )
     return parser.parse_args(args)
