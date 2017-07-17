@@ -53,6 +53,7 @@ class SybilNode(asyncio.DatagramProtocol):
         # Maximum number of neighbours (this is a THRESHOLD where, once reached, the search for new neighbours will
         # stop; but until then, the total number of neighbours might exceed the threshold).
         self._n_max_neighbours = max_neighbours
+        self._n_real_max_neighbours = max_neighbours
         self.__parent_futures = {}  # type: typing.Dict[InfoHash, asyncio.Future]
         self._is_infohash_new = is_infohash_new
         self.__max_metadata_size = max_metadata_size
@@ -113,7 +114,7 @@ class SybilNode(asyncio.DatagramProtocol):
             self.__make_neighbours()
             self._routing_table.clear()
             if not self._is_writing_paused:
-                self._n_max_neighbours = self._n_max_neighbours * 101 // 100
+                self._n_max_neighbours = min(self._n_max_neighbours * 101 // 100, self._n_real_max_neighbours)
             # mypy ignore: because .child_count on Future is monkey-patched
             logging.debug("fetch metadata task count: %d", self.metadata_tasks)  # type: ignore
             logging.debug("asyncio task count: %d", len(asyncio.Task.all_tasks()))
