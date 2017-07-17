@@ -63,7 +63,7 @@ class Database:
                     self._cnt['added'],
                     self._cnt['added'] * 100 / self._cnt['catched'] if self._cnt['catched'] else 0,
                     self._cnt['errors'],
-                    len(node._hashes),
+                    len(node._hashes) + node._memcache.stats()[b'curr_items'],
                     node._collisions,
                     node._n_max_neighbours,
                 )

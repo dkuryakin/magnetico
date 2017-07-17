@@ -173,8 +173,7 @@ def main() -> int:
         arguments.max_metadata_size,
         arguments.max_neighbours,
         arguments.cache,
-        arguments.memcache,
-        str(arguments.node_addr[-1]).encode()
+        arguments.memcache
     )
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
