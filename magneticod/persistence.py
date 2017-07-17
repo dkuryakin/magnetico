@@ -132,15 +132,19 @@ class Database:
         return True
 
     def is_infohash_new(self, info_hash, skip_check=False):
-        self._cnt['catched'] += 1
-        if skip_check:
-            return
-        if info_hash in [x['info_hash'] for x in self.__pending_metadata]:
-            self._cnt['known'] += 1
-            return False
-        x = Torrent.select().where(Torrent.info_hash == info_hash).count()
-        self._cnt['known'] += int(x > 0)
-        return x == 0
+        try:
+            self._cnt['catched'] += 1
+            if skip_check:
+                return
+            if info_hash in [x['info_hash'] for x in self.__pending_metadata]:
+                self._cnt['known'] += 1
+                return False
+            x = Torrent.select().where(Torrent.info_hash == info_hash).count()
+            self._cnt['known'] += int(x > 0)
+            return x == 0
+        except peewee.InterfaceError:
+            self._connect()
+            raise
 
     def __commit_metadata(self, node) -> None:
         # noinspection PyBroadException
