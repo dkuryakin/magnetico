@@ -131,6 +131,10 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         '-n', '--max-neighbours', default=2000, type=int,
         help="Set max neighbours count.",
     )
+    parser.add_argument(
+        '-B', '--batch-size', default=10, type=int,
+        help="Commit batch size.",
+    )
     return parser.parse_args(args)
 
 
@@ -152,7 +156,7 @@ def main() -> int:
 
     # noinspection PyBroadException
     try:
-        database = persistence.Database(arguments.database)
+        database = persistence.Database(arguments.database, commit_n=arguments.batch_size)
     except:
         logging.exception("could NOT connect to the database!", exc_info=False)
         return 1

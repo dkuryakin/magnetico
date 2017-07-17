@@ -21,13 +21,13 @@ import peewee
 from .models import Torrent, File, database_proxy
 from playhouse.db_url import connect, parse
 from magneticod import bencode
-from .constants import PENDING_INFO_HASHES
 from collections import Counter
 import asyncio
 
 
 class Database:
-    def __init__(self, database) -> None:
+    def __init__(self, database, commit_n=10) -> None:
+        self._commit_n = commit_n
         kw = {}
         self._cnt = Counter()
         if database.startswith('sqlite://'):
@@ -126,7 +126,7 @@ class Database:
         logging.info("Added: `%s`", name)
 
         # Automatically check if the buffer is full, and commit to the SQLite database if so.
-        if len(self.__pending_metadata) >= PENDING_INFO_HASHES:
+        if len(self.__pending_metadata) >= self._commit_n:
             self.__commit_metadata(node)
 
         return True
