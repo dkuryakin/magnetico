@@ -21,7 +21,7 @@ import socket
 import typing
 import os
 from collections import Counter
-from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH, PEER_TIMEOUT, TICK_INTERVAL
+from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH, PEER_TIMEOUT, TICK_INTERVAL, TRANSPORT_BUFFER_SIZE
 from . import bencode
 from . import bittorrent
 from pymemcache.client.base import Client
@@ -74,6 +74,7 @@ class SybilNode(asyncio.DatagramProtocol):
         # mypy ignored: mypy doesn't know (yet) about coroutines
         self._tick_task = asyncio.get_event_loop().create_task(self.tick_periodically())  # type: ignore
         self._transport = transport
+        transport.set_write_buffer_limits(high=TRANSPORT_BUFFER_SIZE, low=int(TRANSPORT_BUFFER_SIZE * 0.9))
 
     def connection_lost(self, exc) -> None:
         logging.critical("SybilNode's connection is lost.")
@@ -83,7 +84,7 @@ class SybilNode(asyncio.DatagramProtocol):
         self._is_writing_paused = True
         # In case of congestion, decrease the maximum number of nodes to the 90% of the current value.
         self._n_max_neighbours = self._n_max_neighbours * 9 // 10
-        logging.debug("Maximum number of neighbours now %d", self._n_max_neighbours)
+        logging.debug("Maximum number of neighbours now %d (pause_writing)", self._n_max_neighbours)
 
     def resume_writing(self) -> None:
         self._is_writing_paused = False
@@ -113,7 +114,7 @@ class SybilNode(asyncio.DatagramProtocol):
                                 "connection if this message recurs)")
             else:
                 self._n_max_neighbours = self._n_max_neighbours * 9 // 10
-                logging.debug("Maximum number of neighbours now %d", self._n_max_neighbours)
+                logging.debug("Maximum number of neighbours now %d (error_received)", self._n_max_neighbours)
         else:
             # The previous "exception" was kind of "unexceptional", but we should log anything else.
             logging.error("SybilNode operational error: `%s`", exc)
