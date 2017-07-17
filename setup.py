@@ -24,7 +24,6 @@ def run_setup():
         name="magneticod",
         version="0.6.0",
         description="Autonomous BitTorrent DHT crawler and metadata fetcher.",
-        long_description=read_file("README.rst"),
         url="http://magnetico.org",
         author="Mert Bora ALPER",
         author_email="bora@boramalper.org",
