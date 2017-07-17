@@ -174,13 +174,12 @@ def main() -> int:
         arguments.max_neighbours,
         arguments.cache,
         arguments.memcache,
-        str(arguments.node_addr[-1]).encode(),
-        stats_interval=arguments.stats_interval
+        str(arguments.node_addr[-1]).encode()
     )
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
     metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore
-    print_info_task = loop.create_task(database.print_info(node, delay=3600))  # type: ignore
+    print_info_task = loop.create_task(database.print_info(node, delay=arguments.stats_interval))  # type: ignore
 
     try:
         asyncio.get_event_loop().run_forever()
