@@ -42,6 +42,7 @@ class SybilNode(asyncio.DatagramProtocol):
             int(memcache.split(':')[1])
         ), key_prefix=prefix) if memcache else None
 
+        self._error = False
         self._collisions = 0
         self._hashes = set()
         self._cnt = Counter()
@@ -94,30 +95,7 @@ class SybilNode(asyncio.DatagramProtocol):
             self._transport.sendto(data, addr)
 
     def error_received(self, exc: Exception) -> None:
-        if isinstance(exc, PermissionError) or (isinstance(exc, OSError) and exc.errno == errno.ENOBUFS):
-            # This exception (EPERM errno: 1) is kernel's way of saying that "you are far too fast, chill".
-            # It is also likely that we have received a ICMP source quench packet (meaning, that we really need to
-            # slow down.
-            #
-            # Read more here: http://www.archivum.info/comp.protocols.tcp-ip/2009-05/00088/UDP-socket-amp-amp-sendto
-            #                 -amp-amp-EPERM.html
-
-            # > Note On BSD systems (OS X, FreeBSD, etc.) flow control is not supported for DatagramProtocol, because
-            # > send failures caused by writing too many packets cannot be detected easily. The socket always appears
-            # > ‘ready’ and excess packets are dropped; an OSError with errno set to errno.ENOBUFS may or may not be
-            # > raised; if it is raised, it will be reported to DatagramProtocol.error_received() but otherwise ignored.
-            # Source: https://docs.python.org/3/library/asyncio-protocol.html#flow-control-callbacks
-
-            # In case of congestion, decrease the maximum number of nodes to the 90% of the current value.
-            if self._n_max_neighbours < 200:
-                logging.warning("Max. number of neighbours are < 200 and there is still congestion! (check your network "
-                                "connection if this message recurs)")
-            else:
-                self._n_max_neighbours = self._n_max_neighbours * 9 // 10
-                logging.debug("Maximum number of neighbours now %d (error_received)", self._n_max_neighbours)
-        else:
-            # The previous "exception" was kind of "unexceptional", but we should log anything else.
-            logging.error("SybilNode operational error: `%s`", exc)
+        self._error = exc
 
     @property
     def metadata_tasks(self):
@@ -137,6 +115,39 @@ class SybilNode(asyncio.DatagramProtocol):
             # mypy ignore: because .child_count on Future is monkey-patched
             logging.debug("fetch metadata task count: %d", self.metadata_tasks)  # type: ignore
             logging.debug("asyncio task count: %d", len(asyncio.Task.all_tasks()))
+
+            if self._error:
+                exc = self._error
+                if isinstance(exc, PermissionError) or (
+                    isinstance(exc, OSError) and exc.errno == errno.ENOBUFS):
+                    # This exception (EPERM errno: 1) is kernel's way of saying that "you are far too fast, chill".
+                    # It is also likely that we have received a ICMP source quench packet (meaning, that we really need to
+                    # slow down.
+                    #
+                    # Read more here: http://www.archivum.info/comp.protocols.tcp-ip/2009-05/00088/UDP-socket-amp-amp-sendto
+                    #                 -amp-amp-EPERM.html
+
+                    # > Note On BSD systems (OS X, FreeBSD, etc.) flow control is not supported for DatagramProtocol, because
+                    # > send failures caused by writing too many packets cannot be detected easily. The socket always appears
+                    # > ‘ready’ and excess packets are dropped; an OSError with errno set to errno.ENOBUFS may or may not be
+                    # > raised; if it is raised, it will be reported to DatagramProtocol.error_received() but otherwise ignored.
+                    # Source: https://docs.python.org/3/library/asyncio-protocol.html#flow-control-callbacks
+
+                    # In case of congestion, decrease the maximum number of nodes to the 90% of the current value.
+                    if self._n_max_neighbours < 200:
+                        logging.warning(
+                            "Max. number of neighbours are < 200 and there is still congestion! (check your network "
+                            "connection if this message recurs)")
+                    else:
+                        self._n_max_neighbours = self._n_max_neighbours * 9 // 10
+                        logging.debug(
+                            "Maximum number of neighbours now %d (error_received)",
+                            self._n_max_neighbours)
+                else:
+                    # The previous "exception" was kind of "unexceptional", but we should log anything else.
+                    logging.error("SybilNode operational error: `%s`", exc)
+            self._error = False
+
 
     def datagram_received(self, data, addr) -> None:
         # Ignore nodes that "uses" port 0, as we cannot communicate with them reliably across the different systems.
