@@ -21,7 +21,7 @@ import socket
 import typing
 import os
 from collections import Counter
-from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH, PEER_TIMEOUT, TICK_INTERVAL, TRANSPORT_BUFFER_SIZE
+from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH, PEER_TIMEOUT, TRANSPORT_BUFFER_SIZE
 from . import bencode
 from . import bittorrent
 from pymemcache.client.base import Client
