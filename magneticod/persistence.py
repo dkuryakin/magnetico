@@ -61,7 +61,7 @@ class Database:
                 self._cnt['errors'],
                 len(node._hashes),
                 node._collisions,
-                len(node._routing_table),
+                node._n_max_neighbours,
                 node._skip
             )
             node._cnt = Counter()
@@ -158,7 +158,7 @@ class Database:
                     "%d metadata (%d files) are committed to the database. [nodes:%d cathed_hash:%d rate:%.2f%% fetch_task:%d asyncio_task:%d lcache:%d/%d max:%d skip:%d]",
                     len(self.__pending_metadata), len(self.__pending_files), node._cnt['nodes'], self._cnt['catched'],
                     100 * self._cnt['added'] / self._cnt['catched'], node.metadata_tasks, len(asyncio.Task.all_tasks()),
-                    len(node._hashes), node._collisions, len(node._routing_table), node._skip
+                    len(node._hashes), node._collisions, node._n_max_neighbours, node._skip
                 )
                 self.__pending_metadata.clear()
                 self.__pending_files.clear()

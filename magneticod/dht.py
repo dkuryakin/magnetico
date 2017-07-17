@@ -51,7 +51,7 @@ class SybilNode(asyncio.DatagramProtocol):
         self.__token_secret = os.urandom(4)
         # Maximum number of neighbours (this is a THRESHOLD where, once reached, the search for new neighbours will
         # stop; but until then, the total number of neighbours might exceed the threshold).
-        self.__n_max_neighbours = max_neighbours
+        self._n_max_neighbours = max_neighbours
         self.__parent_futures = {}  # type: typing.Dict[InfoHash, asyncio.Future]
         self._is_infohash_new = is_infohash_new
         self.__max_metadata_size = max_metadata_size
@@ -82,8 +82,8 @@ class SybilNode(asyncio.DatagramProtocol):
     def pause_writing(self) -> None:
         self._is_writing_paused = True
         # In case of congestion, decrease the maximum number of nodes to the 90% of the current value.
-        self.__n_max_neighbours = self.__n_max_neighbours * 9 // 10
-        logging.debug("Maximum number of neighbours now %d", self.__n_max_neighbours)
+        self._n_max_neighbours = self._n_max_neighbours * 9 // 10
+        logging.debug("Maximum number of neighbours now %d", self._n_max_neighbours)
 
     def resume_writing(self) -> None:
         self._is_writing_paused = False
@@ -108,12 +108,12 @@ class SybilNode(asyncio.DatagramProtocol):
             # Source: https://docs.python.org/3/library/asyncio-protocol.html#flow-control-callbacks
 
             # In case of congestion, decrease the maximum number of nodes to the 90% of the current value.
-            if self.__n_max_neighbours < 200:
+            if self._n_max_neighbours < 200:
                 logging.warning("Max. number of neighbours are < 200 and there is still congestion! (check your network "
                                 "connection if this message recurs)")
             else:
-                self.__n_max_neighbours = self.__n_max_neighbours * 9 // 10
-                logging.debug("Maximum number of neighbours now %d", self.__n_max_neighbours)
+                self._n_max_neighbours = self._n_max_neighbours * 9 // 10
+                logging.debug("Maximum number of neighbours now %d", self._n_max_neighbours)
         else:
             # The previous "exception" was kind of "unexceptional", but we should log anything else.
             logging.error("SybilNode operational error: `%s`", exc)
@@ -132,7 +132,7 @@ class SybilNode(asyncio.DatagramProtocol):
             self.__make_neighbours()
             self._routing_table.clear()
             if not self._is_writing_paused:
-                self.__n_max_neighbours = self.__n_max_neighbours * 101 // 100
+                self._n_max_neighbours = self._n_max_neighbours * 101 // 100
             # mypy ignore: because .child_count on Future is monkey-patched
             logging.debug("fetch metadata task count: %d", self.metadata_tasks)  # type: ignore
             logging.debug("asyncio task count: %d", len(asyncio.Task.all_tasks()))
@@ -181,12 +181,12 @@ class SybilNode(asyncio.DatagramProtocol):
         except AssertionError:
             return
 
-        if len(self._routing_table) >= self.__n_max_neighbours:
+        if len(self._routing_table) >= self._n_max_neighbours:
             self._skip += len(nodes)
             return
 
         nodes = [n for n in nodes if n[1][1] != 0]  # Ignore nodes with port 0.
-        update_nodes = nodes[:self.__n_max_neighbours - len(self._routing_table)]
+        update_nodes = nodes[:self._n_max_neighbours - len(self._routing_table)]
         self._skip += len(nodes) - len(update_nodes)
         self._routing_table.update(update_nodes)
 
