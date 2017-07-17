@@ -174,10 +174,12 @@ class Database:
         except peewee.InterfaceError:
             self._connect()
         except:
-            self._cnt['errors'] += n
             logging.exception(
                 "Could NOT commit metadata to the database! (%d metadata are pending)",
                 len(self.__pending_metadata), exc_info=False)
+            self.__pending_metadata.clear()
+            self.__pending_files.clear()
+            self._cnt['errors'] += n
 
     def close(self, node) -> None:
         if self.__pending_metadata:
