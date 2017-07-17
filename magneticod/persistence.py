@@ -51,6 +51,13 @@ class Database:
         database_proxy.initialize(db)
         database_proxy.create_tables([Torrent, File], safe=True)
 
+    async def reset_counters(self, node, delay=3600):
+        while True:
+            node._cnt = Counter()
+            node._skip = 0
+            self._cnt = Counter()
+            await asyncio.sleep(delay)
+
     async def print_info(self, node, delay=3600):
         while True:
             try:
@@ -71,8 +78,6 @@ class Database:
                 )
             except:
                 pass
-            # node._cnt = Counter()
-            # self._cnt = Counter()
             await asyncio.sleep(delay)
 
     def add_metadata(self, info_hash: bytes, metadata: bytes, node) -> bool:

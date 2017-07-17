@@ -179,6 +179,7 @@ def main() -> int:
     # mypy ignored: mypy doesn't know (yet) about coroutines
     metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore
     print_info_task = loop.create_task(database.print_info(node, delay=arguments.stats_interval))  # type: ignore
+    reset_counters_task = loop.create_task(database.reset_counters(node, delay=3600))  # type: ignore
 
     try:
         asyncio.get_event_loop().run_forever()
@@ -187,6 +188,7 @@ def main() -> int:
     finally:
         metadata_queue_watcher_task.cancel()
         print_info_task.cancel()
+        reset_counters_task.cancel()
         loop.run_until_complete(node.shutdown())
         database.close(node)
 
