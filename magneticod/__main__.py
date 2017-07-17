@@ -135,6 +135,10 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         '-B', '--batch-size', default=1, type=int,
         help="Commit batch size.",
     )
+    parser.add_argument(
+        '-i', '--stats-interval', default=10, type=int,
+        help="Stats interval.",
+    )
     return parser.parse_args(args)
 
 
@@ -156,13 +160,23 @@ def main() -> int:
 
     # noinspection PyBroadException
     try:
-        database = persistence.Database(arguments.database, commit_n=arguments.batch_size)
+        database = persistence.Database(
+            arguments.database, commit_n=arguments.batch_size
+        )
     except:
         logging.exception("could NOT connect to the database!", exc_info=False)
         return 1
 
     loop = asyncio.get_event_loop()
-    node = dht.SybilNode(database.is_infohash_new, arguments.max_metadata_size, arguments.max_neighbours, arguments.cache, arguments.memcache, str(arguments.node_addr[-1]).encode())
+    node = dht.SybilNode(
+        database.is_infohash_new,
+        arguments.max_metadata_size,
+        arguments.max_neighbours,
+        arguments.cache,
+        arguments.memcache,
+        str(arguments.node_addr[-1]).encode(),
+        stats_interval=arguments.stats_interval
+    )
     loop.create_task(node.launch(arguments.node_addr))
     # mypy ignored: mypy doesn't know (yet) about coroutines
     metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore

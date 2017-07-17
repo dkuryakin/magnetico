@@ -34,7 +34,8 @@ Metadata = bytes
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache, prefix):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache, prefix, stats_interval=10):
+        self._stats_interval = stats_interval
         self.__true_id = os.urandom(20)
         self._cache = cache
         self._memcache = Client((
@@ -106,7 +107,7 @@ class SybilNode(asyncio.DatagramProtocol):
 
     async def tick_periodically(self) -> None:
         while True:
-            await asyncio.sleep(TICK_INTERVAL)
+            await asyncio.sleep(self._stats_interval)
             # Bootstrap (by querying the bootstrapping servers) ONLY IF the routing table is empty (i.e. we don't have
             # any neighbours). Otherwise we'll increase the load on those central servers by querying them every second.
             if not self._routing_table:

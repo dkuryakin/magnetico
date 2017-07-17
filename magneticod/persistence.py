@@ -53,8 +53,9 @@ class Database:
 
     async def print_info(self, node, delay=3600):
         while True:
-            logging.info('STATS nodes:%d catched_hash:%d known_hash:%d added_hash:%d bd_errors:%d lcache:%d/%d max:%d skip:%d',
+            logging.info('STATS nodes:%d/%d catched_hash:%d known_hash:%d added_hash:%d bd_errors:%d lcache:%d/%d max:%d',
                 node._cnt['nodes'],
+                node._skip,
                 self._cnt['catched'],
                 self._cnt['known'],
                 self._cnt['added'],
@@ -62,7 +63,6 @@ class Database:
                 len(node._hashes),
                 node._collisions,
                 node._n_max_neighbours,
-                node._skip
             )
             node._cnt = Counter()
             self._cnt = Counter()
@@ -155,10 +155,8 @@ class Database:
                 File.insert_many(self.__pending_files).execute()
                 self._cnt['added'] += n
                 logging.info(
-                    "%d metadata (%d files) are committed to the database. [nodes:%d cathed_hash:%d rate:%.2f%% fetch_task:%d asyncio_task:%d lcache:%d/%d max:%d skip:%d]",
-                    len(self.__pending_metadata), len(self.__pending_files), node._cnt['nodes'], self._cnt['catched'],
-                    100 * self._cnt['added'] / self._cnt['catched'], node.metadata_tasks, len(asyncio.Task.all_tasks()),
-                    len(node._hashes), node._collisions, node._n_max_neighbours, node._skip
+                    "%d metadata (%d files) are committed to the database.",
+                    len(self.__pending_metadata), len(self.__pending_files)
                 )
                 self.__pending_metadata.clear()
                 self.__pending_files.clear()

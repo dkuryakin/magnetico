@@ -5,7 +5,6 @@ BOOTSTRAPPING_NODES = [
     ("dht.transmissionbt.com", 6881)
 ]
 TRANSPORT_BUFFER_SIZE = 50000000
-TICK_INTERVAL = 1  # in seconds
 
  # maximum (inclusive) number of active (disposable) peers to fetch the metadata per info hash at the same time:
 MAX_ACTIVE_PEERS_PER_INFO_HASH = 5
