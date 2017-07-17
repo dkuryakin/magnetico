@@ -75,7 +75,9 @@ class SybilNode(asyncio.DatagramProtocol):
         # mypy ignored: mypy doesn't know (yet) about coroutines
         self._tick_task = asyncio.get_event_loop().create_task(self.tick_periodically())  # type: ignore
         self._transport = transport
+        logging.info('Initial write transport buffer size: ' + transport.get_write_buffer_limits())
         transport.set_write_buffer_limits(high=TRANSPORT_BUFFER_SIZE, low=int(TRANSPORT_BUFFER_SIZE * 0.9))
+        logging.info('Current write transport buffer size: ' + transport.get_write_buffer_limits())
 
     def connection_lost(self, exc) -> None:
         logging.critical("SybilNode's connection is lost.")
