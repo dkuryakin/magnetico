@@ -30,6 +30,8 @@ from . import __version__
 from . import dht
 from . import persistence
 
+from pymemcache.client.base import Client
+
 
 async def metadata_queue_watcher(database: persistence.Database, metadata_queue: asyncio.Queue, node) -> None:
     """
@@ -139,6 +141,11 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         '-i', '--stats-interval', default=10, type=int,
         help="Stats interval.",
     )
+    parser.add_argument(
+        '-H', '--heat-memcache',
+        action="store_true", default=True,
+        help="Heat memcached and exit.",
+    )
     return parser.parse_args(args)
 
 
@@ -166,6 +173,14 @@ def main() -> int:
     except:
         logging.exception("could NOT connect to the database!", exc_info=False)
         return 1
+
+    if arguments.heat_memcache:
+        cache = Client((
+            arguments.memcache.split(':')[0],
+            int(arguments.memcache.split(':')[1])
+        ))
+        database.heat_memcache(cache)
+        return
 
     loop = asyncio.get_event_loop()
     node = dht.SybilNode(

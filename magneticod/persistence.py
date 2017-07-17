@@ -23,6 +23,7 @@ from playhouse.db_url import connect, parse
 from magneticod import bencode
 from collections import Counter
 import asyncio
+import base64
 
 
 class Database:
@@ -50,6 +51,12 @@ class Database:
         db = connect(self._db, **self._kw)
         database_proxy.initialize(db)
         database_proxy.create_tables([Torrent, File], safe=True)
+
+    def heat_memcache(self, cache):
+        for i, torrent in enumerate(Torrent.select(Torrent.info_hash)):
+            m_info_hash = base64.b32encode(torrent.info_hash)
+            cache.set(m_info_hash, '1')
+        logging.info('Heat memcached: add %d hashes.', i)
 
     async def reset_counters(self, node, delay=3600):
         while True:
