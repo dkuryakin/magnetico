@@ -53,14 +53,16 @@ class Database:
 
     async def print_info(self, node, delay=3600):
         while True:
-            logging.info('STATS nodes:%d catched_hash:%d known_hash:%d added_hash:%d bd_errors:%d lcache:%d/%d',
+            logging.info('STATS nodes:%d catched_hash:%d known_hash:%d added_hash:%d bd_errors:%d lcache:%d/%d max:%d skip:%d',
                 node._cnt['nodes'],
                 self._cnt['catched'],
                 self._cnt['known'],
                 self._cnt['added'],
                 self._cnt['errors'],
                 len(node._hashes),
-                node._collisions
+                node._collisions,
+                len(node._routing_table),
+                node._skip
             )
             node._cnt = Counter()
             self._cnt = Counter()
@@ -165,6 +167,8 @@ class Database:
             self.__pending_metadata.clear()
             self.__pending_files.clear()
             self._cnt['errors'] += n
+        except peewee.InterfaceError:
+            self._connect()
         except:
             self._cnt['errors'] += n
             logging.exception(
