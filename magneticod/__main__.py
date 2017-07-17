@@ -143,7 +143,7 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
     )
     parser.add_argument(
         '-H', '--heat-memcache',
-        action="store_true", default=True,
+        action="store_true", default=False,
         help="Heat memcached and exit.",
     )
     return parser.parse_args(args)
