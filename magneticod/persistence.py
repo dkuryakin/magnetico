@@ -54,7 +54,7 @@ class Database:
     async def print_info(self, node, delay=3600):
         while True:
             try:
-                logging.info('STATS nodes:%d/%d catched_hash:%d known_hash:%d %.2f%% added_hash:%d %.2f%% bd_errors:%d lcache:%d/%d max:%d',
+                logging.info('STATS nodes:%d/%d catched_hash:%d known_hash:%d/%.2f%% added_hash:%d/%.2f%% bd_errors:%d lcache:%d/%d max:%d',
                     node._cnt['nodes'],
                     node._skip,
                     self._cnt['catched'],
