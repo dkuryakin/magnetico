@@ -71,8 +71,8 @@ class Database:
                 )
             except:
                 pass
-            node._cnt = Counter()
-            self._cnt = Counter()
+            # node._cnt = Counter()
+            # self._cnt = Counter()
             await asyncio.sleep(delay)
 
     def add_metadata(self, info_hash: bytes, metadata: bytes, node) -> bool:
