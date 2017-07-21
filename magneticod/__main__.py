@@ -50,7 +50,7 @@ def parse_port(port):
         return map(int, port.split(','))
     if '-' in port:
         a, b = port.split('-')
-        return list(range(a, b + 1))
+        return list(range(int(a), int(b) + 1))
     return [int(port)]
 
 
@@ -187,7 +187,7 @@ def main() -> int:
             arguments.cache,
             arguments.memcache
         )
-        loop.create_task(node.launch(arguments.host + ':' + str(port)))
+        loop.create_task(node.launch((arguments.host, port)))
         # mypy ignored: mypy doesn't know (yet) about coroutines
         metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore
         print_info_task = loop.create_task(database.print_info(node, delay=arguments.stats_interval))  # type: ignore
@@ -208,7 +208,7 @@ def main() -> int:
             task.cancel()
         for node in nodes:
             loop.run_until_complete(node.shutdown())
-        database.close(node)
+        database.close()
 
     return 0
 

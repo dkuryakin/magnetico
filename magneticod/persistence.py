@@ -68,6 +68,10 @@ class Database:
     async def print_info(self, node, delay=3600):
         while True:
             try:
+                mcache_hashes = 0
+                if node._memcache:
+                    mcache_hashes = node._memcache.stats()[b'curr_items']
+
                 logging.info('STATS nodes:%d/%d catched_hash:%d known_hash:%d/%.2f%% added_hash:%d/%.2f%% bd_errors:%d lcache:%d/%d task:%d/%d max:%d',
                     node._cnt['nodes'],
                     node._skip,
@@ -77,14 +81,14 @@ class Database:
                     self._cnt['added'],
                     self._cnt['added'] * 100 / self._cnt['catched'] if self._cnt['catched'] else 0,
                     self._cnt['errors'],
-                    len(node._hashes) + node._memcache.stats()[b'curr_items'],
+                    len(node._hashes) + mcache_hashes,
                     node._collisions,
                     node.metadata_tasks,
                     len(asyncio.Task.all_tasks()),
                     node._n_max_neighbours,
                 )
             except:
-                pass
+                logging.exception('Error in printing stats!')
             await asyncio.sleep(delay)
 
     def add_metadata(self, info_hash: bytes, metadata: bytes, node) -> bool:
