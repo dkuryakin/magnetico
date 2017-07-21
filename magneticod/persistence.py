@@ -150,7 +150,7 @@ class Database:
 
         # Automatically check if the buffer is full, and commit to the SQLite database if so.
         if len(self.__pending_metadata) >= self._commit_n:
-            self.__commit_metadata(node)
+            self.__commit_metadata()
 
         return True
 
