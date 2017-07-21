@@ -45,28 +45,13 @@ async def metadata_queue_watcher(database: persistence.Database, metadata_queue:
             logging.info("Corrupt metadata for %s! Ignoring.", info_hash.hex())
 
 
-def parse_ip_port(netloc: str) -> typing.Optional[typing.Tuple[str, int]]:
-    # In case no port supplied
-    try:
-        return str(ipaddress.ip_address(netloc)), 0
-    except ValueError:
-        pass
-
-    # If only port was specified
-    if netloc.isdigit():
-        return '0.0.0.0', int(netloc)
-
-    # In case port supplied
-    try:
-        parsed = urllib.parse.urlparse("//{}".format(netloc))
-        ip = str(ipaddress.ip_address(parsed.hostname))
-        port = parsed.port
-        if port is None:
-            return None
-    except ValueError:
-        return None
-
-    return ip, port
+def parse_port(port):
+    if ',' in port:
+        return map(int, port.split(','))
+    if '-' in port:
+        a, b = port.split('-')
+        return list(range(a, b + 1))
+    return [int(port)]
 
 
 def parse_size(value: str) -> int:
@@ -100,9 +85,15 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
+
     parser.add_argument(
-        '-a', "--node-addr", action="store", type=parse_ip_port, required=False, default=os.getenv('NODE_ADDR', "0.0.0.0:1910"),
-        help="the address of the (DHT) node magneticod will use"
+        '-I', "--host", action="store", required=False, default=os.getenv('NODE_HOST', "0.0.0.0"),
+        help="the host of the (DHT) node magneticod will use"
+    )
+
+    parser.add_argument(
+        '-P', "--port", action="store", type=parse_port, required=False, default=os.getenv('NODE_PORT', "1910"),
+        help="the port of the (DHT) node magneticod will use"
     )
 
     parser.add_argument(
@@ -165,13 +156,15 @@ def main() -> int:
         if sys.platform not in ["linux", "darwin"]:
             logging.warning("uvloop could not be imported, using the default asyncio implementation")
 
+
     # noinspection PyBroadException
     try:
         database = persistence.Database(
             arguments.database, commit_n=arguments.batch_size
         )
     except:
-        logging.exception("could NOT connect to the database!", exc_info=False)
+        logging.exception("could NOT connect to the database!",
+                          exc_info=False)
         return 1
 
     if arguments.heat_memcache:
@@ -182,29 +175,39 @@ def main() -> int:
         database.heat_memcache(cache)
         return
 
+
     loop = asyncio.get_event_loop()
-    node = dht.SybilNode(
-        database.is_infohash_new,
-        arguments.max_metadata_size,
-        arguments.max_neighbours,
-        arguments.cache,
-        arguments.memcache
-    )
-    loop.create_task(node.launch(arguments.node_addr))
-    # mypy ignored: mypy doesn't know (yet) about coroutines
-    metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore
-    print_info_task = loop.create_task(database.print_info(node, delay=arguments.stats_interval))  # type: ignore
-    reset_counters_task = loop.create_task(database.reset_counters(node, delay=3600))  # type: ignore
+    cancel_on_exit = []
+    nodes = []
+    for port in arguments.port:
+        node = dht.SybilNode(
+            database.is_infohash_new,
+            arguments.max_metadata_size,
+            arguments.max_neighbours,
+            arguments.cache,
+            arguments.memcache
+        )
+        loop.create_task(node.launch(arguments.host + ':' + str(port)))
+        # mypy ignored: mypy doesn't know (yet) about coroutines
+        metadata_queue_watcher_task = loop.create_task(metadata_queue_watcher(database, node.metadata_q(), node))  # type: ignore
+        print_info_task = loop.create_task(database.print_info(node, delay=arguments.stats_interval))  # type: ignore
+        reset_counters_task = loop.create_task(database.reset_counters(node, delay=3600))  # type: ignore
+
+        cancel_on_exit.append(metadata_queue_watcher_task)
+        cancel_on_exit.append(print_info_task)
+        cancel_on_exit.append(reset_counters_task)
+        nodes.append(node)
+
 
     try:
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
         logging.critical("Keyboard interrupt received! Exiting gracefully...")
     finally:
-        metadata_queue_watcher_task.cancel()
-        print_info_task.cancel()
-        reset_counters_task.cancel()
-        loop.run_until_complete(node.shutdown())
+        for task in cancel_on_exit:
+            task.cancel()
+        for node in nodes:
+            loop.run_until_complete(node.shutdown())
         database.close(node)
 
     return 0

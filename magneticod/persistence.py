@@ -165,7 +165,7 @@ class Database:
             self._connect()
             raise
 
-    def __commit_metadata(self, node) -> None:
+    def __commit_metadata(self) -> None:
         # noinspection PyBroadException
         n = len(self.__pending_metadata)
         try:
@@ -198,6 +198,6 @@ class Database:
             self.__pending_files.clear()
             self._cnt['errors'] += n
 
-    def close(self, node) -> None:
+    def close(self) -> None:
         if self.__pending_metadata:
-            self.__commit_metadata(node)
+            self.__commit_metadata()
