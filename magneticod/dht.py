@@ -272,12 +272,12 @@ class SybilNode(asyncio.DatagramProtocol):
         else:
             peer_addr = (addr[0], port)
 
-        if self._cache:
-            if info_hash in self._hashes:
-                self._collisions += 1
-                self._is_infohash_new(info_hash, skip_check=True)
-                return
-            self._hashes.add(info_hash)
+        # if self._cache:
+        #     if info_hash in self._hashes:
+        #         self._collisions += 1
+        #         self._is_infohash_new(info_hash, skip_check=True)
+        #         return
+        #     self._hashes.add(info_hash)
 
         m_info_hash = base64.b32encode(info_hash)
         if self._memcache:
