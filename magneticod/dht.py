@@ -215,7 +215,7 @@ class SybilNode(asyncio.DatagramProtocol):
                 else:
                     _nodes.append(n)
                     self._memcache.set(nhash, '1', 15 * 60)
-            nodes = _nodes
+            # nodes = _nodes
 
         update_nodes = nodes[:self._n_max_neighbours - len(self._routing_table)]
         self._skip += len(nodes) - len(update_nodes)
