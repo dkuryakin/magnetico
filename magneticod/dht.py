@@ -207,7 +207,7 @@ class SybilNode(asyncio.DatagramProtocol):
         if self._memcache:
             _nodes = []
             for n in nodes:
-                nhash = base64.b32encode(b'%s:%d' % n[1])
+                nhash = b'nodes-' + base64.b32encode(('%s:%d' % n[1]).encode())
                 known = self._memcache.get(nhash)
                 if known:
                     self._nodes_collisions += 1
