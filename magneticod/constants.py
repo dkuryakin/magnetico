@@ -4,7 +4,7 @@ BOOTSTRAPPING_NODES = [
     ("router.bittorrent.com", 6881),
     ("dht.transmissionbt.com", 6881)
 ]
-TRANSPORT_BUFFER_SIZE = 50000000
+TRANSPORT_BUFFER_SIZE = 5000000
 
  # maximum (inclusive) number of active (disposable) peers to fetch the metadata per info hash at the same time:
 MAX_ACTIVE_PEERS_PER_INFO_HASH = 5
