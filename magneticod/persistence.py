@@ -62,6 +62,7 @@ class Database:
     async def reset_counters(self, node, delay=3600):
         while True:
             node._cnt = Counter()
+            self.start = time.time()
             node._skip = 0
             self._cnt = Counter()
             await asyncio.sleep(delay)
