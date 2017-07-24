@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 import asyncio
+import time
 import base64
 import errno
 import zlib
@@ -38,6 +39,7 @@ class SybilNode(asyncio.DatagramProtocol):
         self._stats_interval = stats_interval
         self.__true_id = os.urandom(20)
         self._cache = cache
+        self._nodes_cache = {}
         self._memcache = Client((
             memcache.split(':')[0],
             int(memcache.split(':')[1])
@@ -204,18 +206,18 @@ class SybilNode(asyncio.DatagramProtocol):
 
         nodes = [n for n in nodes if n[1][1] != 0]  # Ignore nodes with port 0.
 
-        if self._memcache:
+        if self._cache:
+            now = time.time()
             _nodes = []
             for n in nodes:
-                nhash = b'nodes-' + base64.b32encode(('%s:%d' % n[1]).encode())
-                known = self._memcache.get(nhash)
-                if known:
+                nhash = '%s:%d' % n[1]
+                until = self._nodes_cache.get(nhash)
+                if until is None or now - until >= 15 * 60:
                     _nodes.append(n)
-                    self._nodes_collisions += 1
+                    self._nodes_cache[nhash] = now
                 else:
-                    _nodes.append(n)
-                    self._memcache.set(nhash, '1', 15 * 60)
-            # nodes = _nodes
+                    self._nodes_collisions += 1
+            nodes = _nodes
 
         update_nodes = nodes[:self._n_max_neighbours - len(self._routing_table)]
         self._skip += len(nodes) - len(update_nodes)
