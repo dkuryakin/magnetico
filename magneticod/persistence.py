@@ -30,6 +30,7 @@ class Database:
     def __init__(self, database, commit_n=10) -> None:
         self._commit_n = commit_n
         kw = {}
+        self.start = time.time()
         self._cnt = Counter()
         if database.startswith('sqlite://'):
             kw['pragmas'] = [
@@ -72,10 +73,12 @@ class Database:
                 if node._memcache:
                     mcache_hashes = node._memcache.stats()[b'curr_items']
 
-                logging.info('STATS nodes:%d/%d catched_hash:%d known_hash:%d/%.2f%% added_hash:%d/%.2f%% bd_errors:%d lcache:%d/%d task:%d/%d max:%d',
+                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
                     node._cnt['nodes'],
                     node._skip,
+                    node._nodes_collisions,
                     self._cnt['catched'],
+                    self._cnt['catched'] // ((time.time() - self.start) or 1),
                     self._cnt['known'],
                     self._cnt['known'] * 100 / self._cnt['catched'] if self._cnt['catched'] else 0,
                     self._cnt['added'],

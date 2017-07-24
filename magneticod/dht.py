@@ -44,6 +44,7 @@ class SybilNode(asyncio.DatagramProtocol):
         )) if memcache else None
 
         self._error = False
+        self._nodes_collisions = 0
         self._collisions = 0
         self._hashes = set()
         self._cnt = Counter()
@@ -202,6 +203,19 @@ class SybilNode(asyncio.DatagramProtocol):
             return
 
         nodes = [n for n in nodes if n[1][1] != 0]  # Ignore nodes with port 0.
+
+        if self._memcache:
+            _nodes = []
+            for n in nodes:
+                nhash = 'nodes-' + base64.b32encode('%s:%d' % n[1])
+                known = self._memcache.get(nhash)
+                if known:
+                    self._nodes_collisions += 1
+                else:
+                    _nodes.append(n)
+                    self._memcache.set(nhash, '1', 15 * 60)
+            nodes = _nodes
+
         update_nodes = nodes[:self._n_max_neighbours - len(self._routing_table)]
         self._skip += len(nodes) - len(update_nodes)
         self._routing_table.update(update_nodes)
