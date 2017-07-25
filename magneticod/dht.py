@@ -289,7 +289,7 @@ class SybilNode(asyncio.DatagramProtocol):
             peer_addr = (addr[0], port)
 
         if self._hash_stat:
-            self._node_stat.write(b'%s:%d %s\n' % (addr[0].encode(), addr[1], info_hash))
+            self._hash_stat.write(b'%s:%d %s\n' % (addr[0].encode(), addr[1], info_hash))
 
         # if self._cache:
         #     if info_hash in self._hashes:
