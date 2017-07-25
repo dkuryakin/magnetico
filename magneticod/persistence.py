@@ -14,7 +14,7 @@
 # <http://www.gnu.org/licenses/>.
 import logging
 import sqlite3
-import time
+import datetime
 import typing
 import os
 import peewee
@@ -30,8 +30,9 @@ class Database:
     def __init__(self, database, commit_n=10) -> None:
         self._commit_n = commit_n
         kw = {}
-        self.start = time.time()
+        self.start = datetime.datetime.now().timestamp()
         self._cnt = Counter()
+        self._catched = 0
         if database.startswith('sqlite://'):
             kw['pragmas'] = [
                 ('journal_mode', 'WAL'),
@@ -53,16 +54,25 @@ class Database:
         database_proxy.initialize(db)
         database_proxy.create_tables([Torrent, File], safe=True)
 
-    def heat_memcache(self, cache):
-        for i, torrent in enumerate(Torrent.select(Torrent.info_hash)):
-            m_info_hash = base64.b32encode(torrent.info_hash)
-            cache.set(m_info_hash, '1')
-        logging.info('Heat memcached: add %d hashes.', i)
+    def heat_memcache(self, cache, chunk_size=10000):
+        min_id = Torrent.select(Torrent.id).order_by(+Torrent.id).get().id
+        max_id = Torrent.select(Torrent.id).order_by(-Torrent.id).get().id + 1
+        chunks = (max_id - min_id) // chunk_size + 1
+        n = 0
+        for ch_id in range(chunks):
+            a = ch_id * chunk_size + min_id
+            b = a + chunk_size
+            for torrent in Torrent.select(Torrent.info_hash).where(
+                (Torrent.id >= a) & (Torrent.id < b)
+            ):
+                m_info_hash = base64.b32encode(torrent.info_hash)
+                cache.set(m_info_hash, '1')
+                n += 1
+            logging.info('Heat memcached: add %d hashes in total.', n)
 
     async def reset_counters(self, node, delay=3600):
         while True:
             node._cnt = Counter()
-            self.start = time.time()
             node._skip = 0
             self._cnt = Counter()
             await asyncio.sleep(delay)
@@ -73,13 +83,15 @@ class Database:
                 mcache_hashes = 0
                 if node._memcache:
                     mcache_hashes = node._memcache.stats()[b'curr_items']
-
-                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
+                now = datetime.datetime.now().timestamp()
+                timediff = (now - self.start) or 0.000001
+                logging.info('STATS nodes:%d/s=%d/m=%d/c=%d catched:%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
                     node._cnt['nodes'],
                     node._skip,
+                    len(node._nodes_cache),
                     node._nodes_collisions,
                     self._cnt['catched'],
-                    self._cnt['catched'] // ((time.time() - self.start) or 1),
+                    self._catched // timediff,
                     self._cnt['known'],
                     self._cnt['known'] * 100 / self._cnt['catched'] if self._cnt['catched'] else 0,
                     self._cnt['added'],
@@ -91,13 +103,15 @@ class Database:
                     len(asyncio.Task.all_tasks()),
                     node._n_max_neighbours,
                 )
+                self._catched = 0
+                self.start = now
             except:
                 logging.exception('Error in printing stats!')
             await asyncio.sleep(delay)
 
     def add_metadata(self, info_hash: bytes, metadata: bytes, node) -> bool:
         files = []
-        discovered_on = int(time.time())
+        discovered_on = int(datetime.datetime.now().timestamp())
         try:
             if metadata == b'test':
                 info = {b'name': b'test', b'length': 123}
@@ -161,6 +175,7 @@ class Database:
     def is_infohash_new(self, info_hash, skip_check=False):
         try:
             self._cnt['catched'] += 1
+            self._catched += 1
             if skip_check:
                 return
             if info_hash in [x['info_hash'] for x in self.__pending_metadata]:

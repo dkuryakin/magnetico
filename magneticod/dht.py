@@ -35,7 +35,14 @@ Metadata = bytes
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache, stats_interval=1):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache, stats_interval=1, debug_path=None):
+        self._node_stat = None
+        self._hash_stat = None
+        if debug_path:
+            if not os.path.exists(debug_path):
+                os.makedirs(debug_path)
+            self._node_stat = open(os.path.join(debug_path, 'nodes.log'), 'ab')
+            self._hash_stat = open(os.path.join(debug_path, 'hashes.log'), 'ab')
         self._stats_interval = stats_interval
         self.__true_id = os.urandom(20)
         self._cache = cache
@@ -67,6 +74,12 @@ class SybilNode(asyncio.DatagramProtocol):
         self._tick_task = None
 
         logging.info("SybilNode %s initialized!", self.__true_id.hex().upper())
+
+    def __del__(self):
+        if self._node_stat:
+            self._node_stat.close()
+        if self._hash_stat:
+            self._hash_stat.close()
 
     def metadata_q(self):
         return self.__metadata_queue
@@ -171,7 +184,7 @@ class SybilNode(asyncio.DatagramProtocol):
             return
 
         if isinstance(message.get(b"r"), dict) and type(message[b"r"].get(b"nodes")) is bytes:
-            self.__on_FIND_NODE_response(message)
+            self.__on_FIND_NODE_response(message, addr)
         elif message.get(b"q") == b"get_peers":
             self.__on_GET_PEERS_query(message, addr)
         elif message.get(b"q") == b"announce_peer":
@@ -185,7 +198,7 @@ class SybilNode(asyncio.DatagramProtocol):
         await asyncio.wait([self._tick_task])
         self._transport.close()
 
-    def __on_FIND_NODE_response(self, message: bencode.KRPCDict) -> None:  # pylint: disable=invalid-name
+    def __on_FIND_NODE_response(self, message: bencode.KRPCDict, addr: NodeAddress) -> None:  # pylint: disable=invalid-name
         # Well, we are not really interested in your response if our routing table is already full; sorry.
         # (Thanks to Glandos@GitHub for the heads up!)
 
@@ -199,6 +212,9 @@ class SybilNode(asyncio.DatagramProtocol):
             nodes = self.__decode_nodes(nodes_arg)
         except AssertionError:
             return
+
+        if self._node_stat:
+            self._node_stat.write(b'{}:{} {}\n'.format(addr[0], addr[1], len(nodes)))
 
         if len(self._routing_table) >= self._n_max_neighbours:
             self._skip += len(nodes)
@@ -272,6 +288,9 @@ class SybilNode(asyncio.DatagramProtocol):
         else:
             peer_addr = (addr[0], port)
 
+        if self._hash_stat:
+            self._node_stat.write(b'{}:{} {}\n'.format(addr[0], addr[1], info_hash))
+
         # if self._cache:
         #     if info_hash in self._hashes:
         #         self._collisions += 1
@@ -290,6 +309,9 @@ class SybilNode(asyncio.DatagramProtocol):
 
         if not self._is_infohash_new(info_hash):
             return
+
+        if self._memcache:
+            self._memcache.set(m_info_hash, '1', expire=8 * 3600)
 
         event_loop = asyncio.get_event_loop()
 

@@ -113,6 +113,11 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         help="Print debugging information in addition to normal processing.",
     )
     parser.add_argument(
+        '-S', '--stats',
+        action="store_true", default=False,
+        help="Save stats info to files.",
+    )
+    parser.add_argument(
         '-C', '--cache',
         action="store_true", default=False, help="Enable local cache.",
     )
@@ -185,7 +190,8 @@ def main() -> int:
             arguments.max_metadata_size,
             arguments.max_neighbours,
             arguments.cache,
-            arguments.memcache
+            arguments.memcache,
+            debug_path='stats.' + str(port) if arguments.stats else None
         )
         loop.create_task(node.launch((arguments.host, port)))
         # mypy ignored: mypy doesn't know (yet) about coroutines
