@@ -35,7 +35,7 @@ Metadata = bytes
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, cache, memcache, stats_interval=1, debug_path=None):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, memcache, stats_interval=1, debug_path=None):
         self._node_stat = None
         self._hash_stat = None
         if debug_path:
@@ -45,8 +45,6 @@ class SybilNode(asyncio.DatagramProtocol):
             self._hash_stat = open(os.path.join(debug_path, 'hashes.log'), 'ab')
         self._stats_interval = stats_interval
         self.__true_id = os.urandom(20)
-        self._cache = cache
-        self._nodes_cache = {}
         self._memcache = Client((
             memcache.split(':')[0],
             int(memcache.split(':')[1])
@@ -222,19 +220,6 @@ class SybilNode(asyncio.DatagramProtocol):
 
         nodes = [n for n in nodes if n[1][1] != 0]  # Ignore nodes with port 0.
 
-        # if self._cache:
-        #     now = time.time()
-        #     _nodes = []
-        #     for n in nodes:
-        #         nhash = '%s:%d' % n[1]
-        #         until = self._nodes_cache.get(nhash)
-        #         if until is None or now - until >= 15 * 60:
-        #             _nodes.append(n)
-        #             self._nodes_cache[nhash] = now
-        #         else:
-        #             self._nodes_collisions += 1
-        #     nodes = _nodes
-
         if self._memcache:
             _nodes = []
             for n in nodes:
@@ -302,13 +287,6 @@ class SybilNode(asyncio.DatagramProtocol):
 
         if self._hash_stat:
             self._hash_stat.write(b'%s:%d %s\n' % (addr[0].encode(), addr[1], info_hash))
-
-        # if self._cache:
-        #     if info_hash in self._hashes:
-        #         self._collisions += 1
-        #         self._is_infohash_new(info_hash, skip_check=True)
-        #         return
-        #     self._hashes.add(info_hash)
 
         m_info_hash = base64.b32encode(info_hash)
         if self._memcache:

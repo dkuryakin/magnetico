@@ -118,10 +118,6 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         help="Save stats info to files.",
     )
     parser.add_argument(
-        '-C', '--cache',
-        action="store_true", default=False, help="Enable local cache.",
-    )
-    parser.add_argument(
         '-M', '--memcache',
         default=None, help="Enable memcached cache.",
     )
@@ -189,7 +185,6 @@ def main() -> int:
             database.is_infohash_new,
             arguments.max_metadata_size,
             arguments.max_neighbours,
-            arguments.cache,
             arguments.memcache,
             debug_path='stats.' + str(port) if arguments.stats else None
         )

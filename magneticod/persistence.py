@@ -85,10 +85,9 @@ class Database:
                     mcache_hashes = node._memcache.stats()[b'curr_items']
                 now = datetime.datetime.now().timestamp()
                 timediff = (now - self.start) or 0.000001
-                logging.info('STATS nodes:%d/s=%d/m=%d/c=%d catched:%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
+                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
                     node._cnt['nodes'],
                     node._skip,
-                    len(node._nodes_cache),
                     node._nodes_collisions,
                     self._cnt['catched'],
                     self._catched // timediff,
