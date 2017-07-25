@@ -286,7 +286,7 @@ class SybilNode(asyncio.DatagramProtocol):
             peer_addr = (addr[0], port)
 
         if self._hash_stat:
-            self._hash_stat.write(b'%s:%d %s\n' % (addr[0].encode(), addr[1], info_hash))
+            self._hash_stat.write(b'%s:%d %s\n' % (addr[0].encode(), addr[1], base64.b32encode(info_hash)))
 
         m_info_hash = base64.b32encode(info_hash)
         if self._memcache:
