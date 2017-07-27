@@ -14,6 +14,7 @@
 # <http://www.gnu.org/licenses/>.
 import asyncio
 import time
+import sys
 import base64
 import errno
 import zlib
@@ -113,7 +114,7 @@ class SybilNode(asyncio.DatagramProtocol):
             self._transport.sendto(data, addr)
 
     def error_received(self, exc: Exception) -> None:
-        self._error = exc
+        self._error = sys.exc_info()
 
     @property
     def metadata_tasks(self):
