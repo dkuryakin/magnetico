@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 import asyncio
+import traceback
 import time
 import sys
 import base64
@@ -114,6 +115,7 @@ class SybilNode(asyncio.DatagramProtocol):
             self._transport.sendto(data, addr)
 
     def error_received(self, exc: Exception) -> None:
+        traceback.print_exception(*sys.exc_info())
         self._error = exc
 
     @property
@@ -130,7 +132,8 @@ class SybilNode(asyncio.DatagramProtocol):
             self.__make_neighbours()
             self._routing_table.clear()
             if not self._is_writing_paused:
-                self._n_max_neighbours = min(self._n_max_neighbours * 101 // 100, self._n_real_max_neighbours)
+                n = max(self._n_max_neighbours * 101 // 100, self._n_max_neighbours + 1)
+                self._n_max_neighbours = min(n, self._n_real_max_neighbours)
             # mypy ignore: because .child_count on Future is monkey-patched
             logging.debug("fetch metadata task count: %d", self.metadata_tasks)  # type: ignore
             logging.debug("asyncio task count: %d", len(asyncio.Task.all_tasks()))
