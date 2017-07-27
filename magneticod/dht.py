@@ -115,8 +115,6 @@ class SybilNode(asyncio.DatagramProtocol):
             self._transport.sendto(data, addr)
 
     def error_received(self, exc: Exception) -> None:
-        # traceback.print_exception(*sys.exc_info())
-        logging.exception('ERROR!')
         self._error = exc
 
     @property
@@ -158,15 +156,10 @@ class SybilNode(asyncio.DatagramProtocol):
 
                     # In case of congestion, decrease the maximum number of nodes to the 90% of the current value.
 
-                    if False and self._n_max_neighbours < 200:
-                        logging.warning(
-                            "Max. number of neighbours are < 200 and there is still congestion! (check your network "
-                            "connection if this message recurs)")
-                    else:
-                        self._n_max_neighbours = self._n_max_neighbours * 9 // 10
-                        logging.debug(
-                            "Maximum number of neighbours now %d (error_received)",
-                            self._n_max_neighbours)
+                    self._n_max_neighbours = self._n_max_neighbours * 9 // 10
+                    logging.debug(
+                        "Maximum number of neighbours now %d (error_received)",
+                        self._n_max_neighbours)
                     logging.error("SybilNode error.",
                                   exc_info=self._error)
                 else:
@@ -397,7 +390,7 @@ class SybilNode(asyncio.DatagramProtocol):
                     data = self.__build_FIND_NODE_query(self.__true_id)
                     self.sendto(data, sockaddr)
             except Exception:
-                logging.exception("An exception occurred during bootstrapping!", exc_info=False)
+                logging.exception("An exception occurred during bootstrapping!")
 
     def __make_neighbours(self) -> None:
         for node_id, addr in self._routing_table.items():
