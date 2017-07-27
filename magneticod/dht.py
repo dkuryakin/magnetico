@@ -152,7 +152,8 @@ class SybilNode(asyncio.DatagramProtocol):
                     # Source: https://docs.python.org/3/library/asyncio-protocol.html#flow-control-callbacks
 
                     # In case of congestion, decrease the maximum number of nodes to the 90% of the current value.
-                    if self._n_max_neighbours < 200:
+
+                    if False and self._n_max_neighbours < 200:
                         logging.warning(
                             "Max. number of neighbours are < 200 and there is still congestion! (check your network "
                             "connection if this message recurs)")
@@ -161,9 +162,11 @@ class SybilNode(asyncio.DatagramProtocol):
                         logging.debug(
                             "Maximum number of neighbours now %d (error_received)",
                             self._n_max_neighbours)
+                    logging.error("SybilNode error.",
+                                  exc_info=self._error)
                 else:
                     # The previous "exception" was kind of "unexceptional", but we should log anything else.
-                    logging.error("SybilNode operational error: `%s`", exc)
+                    logging.error("SybilNode operational error.", exc_info=self._error)
             self._error = False
 
 
@@ -179,6 +182,9 @@ class SybilNode(asyncio.DatagramProtocol):
         try:
             message = bencode.loads(data)
         except bencode.BencodeDecodingError:
+            return
+
+        if message == StopIteration:
             return
 
         if isinstance(message.get(b"r"), dict) and type(message[b"r"].get(b"nodes")) is bytes:
