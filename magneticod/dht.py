@@ -116,6 +116,7 @@ class SybilNode(asyncio.DatagramProtocol):
 
     def error_received(self, exc: Exception) -> None:
         # traceback.print_exception(*sys.exc_info())
+        logging.exception('ERROR!')
         self._error = exc
 
     @property
