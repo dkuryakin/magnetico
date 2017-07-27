@@ -114,7 +114,8 @@ class SybilNode(asyncio.DatagramProtocol):
             self._transport.sendto(data, addr)
 
     def error_received(self, exc: Exception) -> None:
-        self._error = sys.exc_info()
+        logging.exception('SybilNode error.')
+        self._error = None
 
     @property
     def metadata_tasks(self):
