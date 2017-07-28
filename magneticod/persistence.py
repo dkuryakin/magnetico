@@ -33,6 +33,7 @@ class Database:
         self.start = datetime.datetime.now().timestamp()
         self._cnt = Counter()
         self._catched = 0
+        self._new = 0
         if database.startswith('sqlite://'):
             kw['pragmas'] = [
                 ('journal_mode', 'WAL'),
@@ -85,12 +86,13 @@ class Database:
                     mcache_hashes = node._memcache.stats()[b'curr_items']
                 now = datetime.datetime.now().timestamp()
                 timediff = (now - self.start) or 0.000001
-                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
+                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
                     node._cnt['nodes'],
                     node._skip,
                     node._nodes_collisions,
                     self._cnt['catched'],
                     self._catched // timediff,
+                    self._new // timediff,
                     self._cnt['known'],
                     self._cnt['known'] * 100 / self._cnt['catched'] if self._cnt['catched'] else 0,
                     self._cnt['added'],
@@ -103,6 +105,7 @@ class Database:
                     node._n_max_neighbours,
                 )
                 self._catched = 0
+                self._new = 0
                 self.start = now
             except:
                 logging.exception('Error in printing stats!')
@@ -182,6 +185,8 @@ class Database:
                 return False
             x = Torrent.select().where(Torrent.info_hash == info_hash).count()
             self._cnt['known'] += int(x > 0)
+            if x == 0:
+                self._new += 1
             return x == 0
         except peewee.InterfaceError:
             self._connect()
