@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 import asyncio
+import datetime
 import traceback
 import time
 import sys
@@ -57,6 +58,7 @@ class SybilNode(asyncio.DatagramProtocol):
         self._collisions = 0
         self._hashes = set()
         self._cnt = Counter()
+        self._timers = Counter()
         self._routing_table = {}  # type: typing.Dict[NodeID, NodeAddress]
         self._skip = 0
 
@@ -327,6 +329,7 @@ class SybilNode(asyncio.DatagramProtocol):
             parent_f = event_loop.create_future()
             # mypy ignore: because .child_count on Future is being monkey-patched here!
             parent_f.child_count = 0  # type: ignore
+            self._timers[info_hash] -= datetime.datetime.now().timestamp()
             parent_f.add_done_callback(lambda f: self._parent_task_done(f, info_hash))
             self.__parent_futures[info_hash] = parent_f
 
@@ -379,6 +382,10 @@ class SybilNode(asyncio.DatagramProtocol):
         except asyncio.CancelledError:
             pass
         del self.__parent_futures[info_hash]
+        if info_hash in self._timers:
+            self._timers[info_hash] += datetime.datetime.now().timestamp()
+            self._cnt['timers'] += self._timers[info_hash]
+            self._cnt['timers_count'] += 1
 
     async def __bootstrap(self) -> None:
         event_loop = asyncio.get_event_loop()

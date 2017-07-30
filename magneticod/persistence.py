@@ -86,7 +86,7 @@ class Database:
                     mcache_hashes = node._memcache.stats()[b'curr_items']
                 now = datetime.datetime.now().timestamp()
                 timediff = (now - self.start) or 0.000001
-                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d',
+                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d ft:%.2f',
                     node._cnt['nodes'],
                     node._skip,
                     node._nodes_collisions,
@@ -103,6 +103,7 @@ class Database:
                     node.metadata_tasks,
                     len(asyncio.Task.all_tasks()),
                     node._n_max_neighbours,
+                    node._cnt['timers'] / (node._cnt['timers_count'] or 1)
                 )
                 self._catched = 0
                 self._new = 0
@@ -166,7 +167,7 @@ class Database:
         # List is an Iterable man...
         self.__pending_files += files  # type: ignore
 
-        logging.info("Added: `%s`", name)
+        logging.info("Added: `%s` fetch_time:%.2f", name, node._timers.get(info_hash, 0))
 
         # Automatically check if the buffer is full, and commit to the SQLite database if so.
         if len(self.__pending_metadata) >= self._commit_n:
