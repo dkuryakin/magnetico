@@ -379,13 +379,13 @@ class SybilNode(asyncio.DatagramProtocol):
             metadata = parent_task.result()
             if metadata:
                 self.__metadata_queue.put_nowait((info_hash, metadata))
+                if info_hash in self._timers:
+                    self._timers[info_hash] += datetime.datetime.now().timestamp()
+                    self._cnt['timers'] += self._timers[info_hash]
+                    self._cnt['timers_count'] += 1
         except asyncio.CancelledError:
             pass
         del self.__parent_futures[info_hash]
-        if info_hash in self._timers:
-            self._timers[info_hash] += datetime.datetime.now().timestamp()
-            self._cnt['timers'] += self._timers[info_hash]
-            self._cnt['timers_count'] += 1
 
     async def __bootstrap(self) -> None:
         event_loop = asyncio.get_event_loop()

@@ -168,6 +168,7 @@ class Database:
         self.__pending_files += files  # type: ignore
 
         logging.info("Added: `%s` fetch_time:%.2f", name, node._timers.get(info_hash, 0))
+        node._timers.pop(info_hash, None)
 
         # Automatically check if the buffer is full, and commit to the SQLite database if so.
         if len(self.__pending_metadata) >= self._commit_n:
