@@ -138,6 +138,14 @@ def parse_cmdline_arguments(args: typing.List[str]) -> typing.Optional[argparse.
         action="store_true", default=False,
         help="Heat memcached and exit.",
     )
+    parser.add_argument(
+        '-X', '--peers-per-hash', default=5, type=int,
+        help="Max active peers per info hash.",
+    )
+    parser.add_argument(
+        '-T', '--peer-timeout', default=30, type=int,
+        help="Peer timeout.",
+    )
     return parser.parse_args(args)
 
 
@@ -186,6 +194,8 @@ def main() -> int:
             arguments.max_metadata_size,
             arguments.max_neighbours,
             arguments.memcache,
+            arguments.peer_timeout,
+            arguments.peers_per_hash,
             debug_path='stats.' + str(port) if arguments.stats else None
         )
         loop.create_task(node.launch((arguments.host, port)))

@@ -26,8 +26,7 @@ import typing
 import os
 import ipaddress
 from collections import Counter
-from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH,\
-    PEER_TIMEOUT, TRANSPORT_BUFFER_SIZE, EXCLUDE
+from .constants import BOOTSTRAPPING_NODES, TRANSPORT_BUFFER_SIZE, EXCLUDE
 from . import bencode
 from . import bittorrent
 from pymemcache.client.base import Client
@@ -48,7 +47,9 @@ def exclude_ip(ip):
 
 
 class SybilNode(asyncio.DatagramProtocol):
-    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, memcache, stats_interval=1, debug_path=None):
+    def __init__(self, is_infohash_new, max_metadata_size, max_neighbours, memcache, peer_timeout, peers_per_hash, stats_interval=1, debug_path=None):
+        self._peer_timeout = peer_timeout
+        self._peers_per_hash = peers_per_hash
         self._node_stat = None
         self._hash_stat = None
         if debug_path:
@@ -355,11 +356,11 @@ class SybilNode(asyncio.DatagramProtocol):
         if parent_f.done():
             return
         # mypy ignore: because .child_count on Future is monkey-patched
-        if parent_f.child_count > MAX_ACTIVE_PEERS_PER_INFO_HASH:  # type: ignore
+        if parent_f.child_count > self._peers_per_hash:  # type: ignore
             return
 
         task = asyncio.ensure_future(bittorrent.fetch_metadata_from_peer(
-            info_hash, peer_addr, self.__max_metadata_size, timeout=PEER_TIMEOUT))
+            info_hash, peer_addr, self.__max_metadata_size, timeout=self._peer_timeout))
         task.add_done_callback(lambda task: self._got_child_result(parent_f, task))
         # mypy ignore: because .child_count on Future is monkey-patched
         parent_f.child_count += 1  # type: ignore
