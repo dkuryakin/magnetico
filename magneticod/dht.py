@@ -39,11 +39,12 @@ Metadata = bytes
 
 
 def exclude_ip(ip):
-    ip = ipaddress.ip_address(ip)
-    for network in EXCLUDE:
-        if ip in ipaddress.ip_network(network):
-            return True
     return False
+    # ip = ipaddress.ip_address(ip)
+    # for network in EXCLUDE:
+    #     if ip in ipaddress.ip_network(network):
+    #         return True
+    # return False
 
 
 class SybilNode(asyncio.DatagramProtocol):
@@ -152,8 +153,9 @@ class SybilNode(asyncio.DatagramProtocol):
 
             if self._error:
                 exc = self._error
-                if isinstance(exc, PermissionError) or (
-                    isinstance(exc, OSError) and exc.errno == errno.ENOBUFS):
+                if isinstance(exc, PermissionError):
+                    pass
+                elif isinstance(exc, OSError) and exc.errno == errno.ENOBUFS:
                     # This exception (EPERM errno: 1) is kernel's way of saying that "you are far too fast, chill".
                     # It is also likely that we have received a ICMP source quench packet (meaning, that we really need to
                     # slow down.
@@ -240,7 +242,7 @@ class SybilNode(asyncio.DatagramProtocol):
         if self._memcache:
             _nodes = []
             for n in nodes:
-                nhash = base64.b32encode(('%s:%d' % n[1]).encode())
+                nhash = n[1].encode()
                 known = self._memcache.get(nhash)
                 if not known:
                     _nodes.append(n)

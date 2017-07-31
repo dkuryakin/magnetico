@@ -204,7 +204,7 @@ class DisposablePeer:
                     logging.debug("Invalid Metadata! Ignoring.")
 
         elif msg_type == 2:  # reject
-            logging.info("Peer rejected us.")
+            logging.info("Peer %s:%d rejected us.", *self.__peer_addr)
 
     def __request_metadata_piece(self, piece: int) -> None:
         msg_dict_dump = bencode.dumps({
