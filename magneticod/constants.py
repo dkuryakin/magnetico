@@ -9,4 +9,4 @@ TRANSPORT_BUFFER_SIZE = 5000000
  # maximum (inclusive) number of active (disposable) peers to fetch the metadata per info hash at the same time:
 MAX_ACTIVE_PEERS_PER_INFO_HASH = 5
 
-PEER_TIMEOUT=120 # seconds
+PEER_TIMEOUT = 30  # seconds
