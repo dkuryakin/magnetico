@@ -24,8 +24,10 @@ import logging
 import socket
 import typing
 import os
+import ipaddress
 from collections import Counter
-from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH, PEER_TIMEOUT, TRANSPORT_BUFFER_SIZE
+from .constants import BOOTSTRAPPING_NODES, MAX_ACTIVE_PEERS_PER_INFO_HASH,\
+    PEER_TIMEOUT, TRANSPORT_BUFFER_SIZE, EXCLUDE
 from . import bencode
 from . import bittorrent
 from pymemcache.client.base import Client
@@ -35,6 +37,14 @@ NodeAddress = typing.Tuple[str, int]
 PeerAddress = typing.Tuple[str, int]
 InfoHash = bytes
 Metadata = bytes
+
+
+def exclude_ip(ip):
+    ip = ipaddress.ip_address(ip)
+    for network in EXCLUDE:
+        if ip in ipaddress.ip_network(network):
+            return True
+    return False
 
 
 class SybilNode(asyncio.DatagramProtocol):
@@ -243,6 +253,9 @@ class SybilNode(asyncio.DatagramProtocol):
         self._routing_table.update(update_nodes)
 
     def __on_GET_PEERS_query(self, message: bencode.KRPCDict, addr: NodeAddress) -> None:  # pylint: disable=invalid-name
+        if exclude_ip(addr[0]):
+            return
+
         try:
             transaction_id = message[b"t"]
             assert type(transaction_id) is bytes and transaction_id
@@ -263,6 +276,9 @@ class SybilNode(asyncio.DatagramProtocol):
         self.sendto(data, addr)
 
     def __on_ANNOUNCE_PEER_query(self, message: bencode.KRPCDict, addr: NodeAddress) -> None:  # pylint: disable=invalid-name
+        if exclude_ip(addr[0]):
+            return
+
         try:
             node_id = message[b"a"][b"id"]
             assert type(node_id) is bytes and len(node_id) == 20
@@ -403,6 +419,8 @@ class SybilNode(asyncio.DatagramProtocol):
     def __make_neighbours(self) -> None:
         for node_id, addr in self._routing_table.items():
             self._cnt['nodes'] += 1
+            if exclude_ip(addr[0]):
+                continue
             self.sendto(self.__build_FIND_NODE_query(node_id[:15] + self.__true_id[:5]), addr)
 
     @staticmethod
