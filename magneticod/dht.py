@@ -329,7 +329,8 @@ class SybilNode(asyncio.DatagramProtocol):
             parent_f = event_loop.create_future()
             # mypy ignore: because .child_count on Future is being monkey-patched here!
             parent_f.child_count = 0  # type: ignore
-            self._timers[info_hash] -= datetime.datetime.now().timestamp()
+            if info_hash not in self._timers:
+                self._timers[info_hash] = -datetime.datetime.now().timestamp()
             parent_f.add_done_callback(lambda f: self._parent_task_done(f, info_hash))
             self.__parent_futures[info_hash] = parent_f
 
