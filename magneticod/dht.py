@@ -242,7 +242,7 @@ class SybilNode(asyncio.DatagramProtocol):
         if self._memcache:
             _nodes = []
             for n in nodes:
-                nhash = n[1].encode()
+                nhash = n[1][0].encode()
                 known = self._memcache.get(nhash)
                 if not known:
                     _nodes.append(n)
