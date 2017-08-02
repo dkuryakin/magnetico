@@ -14,7 +14,8 @@ def run_setup():
         "better_bencode >= 0.2.1",
         "peewee",
         "psycopg2",
-        "pymemcache"
+        "pymemcache",
+        "pymysql"
     ]
 
     if sys.platform in ["linux", "darwin"]:
