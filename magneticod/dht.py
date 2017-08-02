@@ -325,8 +325,8 @@ class SybilNode(asyncio.DatagramProtocol):
         if not self._is_infohash_new(info_hash):
             return
 
-        if self._memcache:
-            self._memcache.set(m_info_hash, '1', expire=8 * 3600)
+        # if self._memcache:
+        #     self._memcache.set(m_info_hash, '1', expire=8 * 3600)
 
         event_loop = asyncio.get_event_loop()
 
