@@ -12,18 +12,26 @@
 #
 # You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
-import logging
-import sqlite3
-import datetime
-import typing
-import os
-import peewee
-from .models import Torrent, File, database_proxy
-from playhouse.db_url import connect, parse
-from magneticod import bencode
-from collections import Counter
 import asyncio
 import base64
+import datetime
+import logging
+import typing
+from collections import Counter
+
+import peewee
+from playhouse.db_url import connect, schemes, PooledMySQLDatabase
+from playhouse.shortcuts import RetryOperationalError
+
+from magneticod import bencode
+from .models import Torrent, File, database_proxy
+
+
+class RetryPooledMySQLDatabase(RetryOperationalError, PooledMySQLDatabase):
+    pass
+
+
+schemes['mysql'] = RetryPooledMySQLDatabase
 
 
 class Database:
@@ -64,7 +72,7 @@ class Database:
             a = ch_id * chunk_size + min_id
             b = a + chunk_size
             for torrent in Torrent.select(Torrent.info_hash).where(
-                (Torrent.id >= a) & (Torrent.id < b)
+                            (Torrent.id >= a) & (Torrent.id < b)
             ):
                 m_info_hash = base64.b32encode(torrent.info_hash)
                 cache.set(m_info_hash, '1')
@@ -86,7 +94,8 @@ class Database:
                     mcache_hashes = node._memcache.stats()[b'curr_items']
                 now = datetime.datetime.now().timestamp()
                 timediff = (now - self.start) or 0.000001
-                logging.info('STATS nodes:%d/s=%d/c=%d catched:%d/%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d ft:%.2f',
+                logging.info(
+                    'STATS nodes:%d/s=%d/c=%d catched:%d/%d/%d known:%d/%.2f%% added:%d/%.2f%% bderr:%d lcache:%d/%d task:%d/%d max:%d ft:%.2f',
                     node._cnt['nodes'],
                     node._skip,
                     node._nodes_collisions,
@@ -94,9 +103,11 @@ class Database:
                     self._catched // timediff,
                     self._new // timediff,
                     self._cnt['known'],
-                    self._cnt['known'] * 100 / self._cnt['catched'] if self._cnt['catched'] else 0,
+                    self._cnt['known'] * 100 / self._cnt['catched'] if
+                    self._cnt['catched'] else 0,
                     self._cnt['added'],
-                    self._cnt['added'] * 100 / self._cnt['catched'] if self._cnt['catched'] else 0,
+                    self._cnt['added'] * 100 / self._cnt['catched'] if
+                    self._cnt['catched'] else 0,
                     self._cnt['errors'],
                     len(node._hashes) + mcache_hashes,
                     node._collisions,
@@ -104,7 +115,7 @@ class Database:
                     len(asyncio.Task.all_tasks()),
                     node._n_max_neighbours,
                     node._cnt['timers'] / (node._cnt['timers_count'] or 1)
-                )
+                    )
                 self._catched = 0
                 self._new = 0
                 self.start = now
@@ -167,7 +178,8 @@ class Database:
         # List is an Iterable man...
         self.__pending_files += files  # type: ignore
 
-        logging.info("Added: `%s` fetch_time:%.2f", name, node._timers.get(info_hash, 0))
+        logging.info("Added: `%s` fetch_time:%.2f", name,
+                     node._timers.get(info_hash, 0))
         node._timers.pop(info_hash, None)
 
         # Automatically check if the buffer is full, and commit to the SQLite database if so.
